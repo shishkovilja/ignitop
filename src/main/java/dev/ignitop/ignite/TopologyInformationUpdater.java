@@ -1,13 +1,19 @@
 package dev.ignitop.ignite;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
-import dev.ignitop.ui.UserInterface;
+import dev.ignitop.ui.component.TerminalComponent;
+import dev.ignitop.ui.TerminalUI;
+import dev.ignitop.ui.component.impl.Label;
+import dev.ignitop.ui.component.impl.Table;
 import dev.ignitop.util.QueryResult;
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.cluster.ClusterNode;
+
+import static dev.ignitop.ui.TerminalUI.EMPTY_SPACE;
 
 /**
  *
@@ -20,12 +26,12 @@ public class TopologyInformationUpdater {
     private final IgniteClient client;
     
     /** User interface. */
-    private final UserInterface ui;
+    private final TerminalUI ui;
 
     /**
      * @param client Client.
      */
-    public TopologyInformationUpdater(IgniteClient client, UserInterface ui) {
+    public TopologyInformationUpdater(IgniteClient client, TerminalUI ui) {
         this.client = client;
         this.ui = ui;
     }
@@ -41,17 +47,37 @@ public class TopologyInformationUpdater {
         QueryResult topVerRes = SqlQueries.topologyVersion(client);
         QueryResult clusterSummaryRes = SqlQueries.clusterSummary(client);
 
-        ui.clearScreen();
+        ArrayList<TerminalComponent> components = new ArrayList<>();
 
-        ui.label(">>>>>> Topology Information: " + LocalDateTime.now() + " <<<<<<");
+        components.add(new Label("Cluster information"));
+        components.add(new Label("Time: " + LocalDateTime.now()));
+        components.add(EMPTY_SPACE);
 
-        ui.printQueryResultWithLabel(SqlQueries.onlineNodes(client), ">>>>>> Online baseline nodes:");
-        ui.printQueryResultWithLabel(SqlQueries.offlineNodes(client), ">>>>>> Offline baseline nodes:");
-        ui.printQueryResultWithLabel(SqlQueries.otherNodes(client), ">>>>>> Other server nodes:");
-        ui.printQueryResultWithLabel(SqlQueries.clientNodes(client), ">>>>>> Client nodes:");
+        components.add(new Label("Online baseline nodes:"));
+        components.add(toTable(SqlQueries.onlineNodes(client)));
+        components.add(EMPTY_SPACE);
 
-        ui.label(">>>>>> End of topology Information <<<<<<");
-        ui.emptyLine();
+        components.add(new Label("Offline baseline nodes:"));
+        components.add(toTable(SqlQueries.offlineNodes(client)));
+        components.add(EMPTY_SPACE);
+
+        components.add(new Label("Other server nodes:"));
+        components.add(toTable(SqlQueries.otherNodes(client)));
+        components.add(EMPTY_SPACE);
+
+        components.add(new Label("Client nodes:"));
+        components.add(toTable(SqlQueries.clientNodes(client)));
+        components.add(EMPTY_SPACE);
+
+        ui.setComponents(components);
+        ui.refresh();
+    }
+
+    /**
+     * @param qryResult Query result.
+     */
+    private Table toTable(QueryResult qryResult) {
+        return new Table(qryResult.columns(), qryResult.rows());
     }
 
     /**

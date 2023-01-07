@@ -18,9 +18,9 @@ public class Terminal implements AutoCloseable {
      * Default constructor.
      */
     public Terminal() {
-        if (System.console() == null)
-            throw new IllegalStateException("No suitable instance of console found. Windows command line or " +
-                "linux terminal application must be user in order to run IgniTop.");
+//        if (System.console() == null)
+//            throw new IllegalStateException("No suitable instance of console found. Windows command line or " +
+//                "linux terminal application must be user in order to run IgniTop.");
 
         enterPrivateMode();
 
