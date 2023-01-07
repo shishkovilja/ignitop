@@ -9,10 +9,12 @@ import java.util.stream.Collectors;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.configuration.ClientConfiguration;
+import org.fusesource.jansi.AnsiConsole;
 
 /**
  *
  */
+@SuppressWarnings("resource")
 public class IgniTop {
     /** Default update interval in seconds. */
     public static final int DEFAULT_UPDATE_INTERVAL = 5;
@@ -21,6 +23,10 @@ public class IgniTop {
      * @param args Command line arguments.
      */
     public static void main(String[] args) {
+        if (System.console() == null)
+            throw new IllegalStateException("No suitable instance of console found. Windows command line or " +
+                    "linux terminal application must be user in order to run IgniTop.");
+
         ScheduledExecutorService scheduledExecutorSrvc = Executors.newScheduledThreadPool(1);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> cleanUp(scheduledExecutorSrvc)));
@@ -48,16 +54,20 @@ public class IgniTop {
      * Enter private mode with alternative buffer.
      */
     private static void privateMode() {
-        System.out.println("\033[?1049h");
-        System.out.flush();
+        AnsiConsole.systemInstall();
+
+        AnsiConsole.out().println("\033[?1049h");
+        AnsiConsole.out().flush();
     }
 
     /**
      * Exit private mode, i.e. disable alternative buffer.
      */
     private static void exitPrivateMode() {
-        System.out.println("\033[?1049l");
-        System.out.flush();
+        AnsiConsole.out().println("\033[?1049l");
+        AnsiConsole.out().flush();
+
+        AnsiConsole.systemUninstall();
     }
 
     /**
