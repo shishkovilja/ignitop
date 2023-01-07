@@ -23,6 +23,10 @@ public class IgniTop {
     public static void main(String[] args) {
         ScheduledExecutorService scheduledExecutorSrvc = Executors.newScheduledThreadPool(1);
 
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> cleanUp(scheduledExecutorSrvc)));
+
+        privateMode();
+
         try (IgniteClient client = Ignition.startClient(new ClientConfiguration().setAddresses("127.0.0.1:10800"))) {
             ScheduledFuture<?> fut = scheduledExecutorSrvc.scheduleAtFixedRate(
                 new TopologyInformationUpdater(client).getRunnable(),
@@ -36,8 +40,41 @@ public class IgniTop {
             throw new RuntimeException(e);
         }
         finally {
-            scheduledExecutorSrvc.shutdown();
+            cleanUp(scheduledExecutorSrvc);
         }
+    }
+
+    /**
+     * Enter private mode with alternative buffer.
+     */
+    private static void privateMode() {
+        System.out.println("\033[?1049h");
+        System.out.flush();
+    }
+
+    /**
+     * Exit private mode, i.e. disable alternative buffer.
+     */
+    private static void exitPrivateMode() {
+        System.out.println("\033[?1049l");
+        System.out.flush();
+    }
+
+    /**
+     *
+     */
+    public static void clearScreen() {
+        System.out.print("\033[H\033[2J");
+        System.out.flush();
+    }
+
+    /**
+     * @param scheduledExecutorSrvc Scheduled executor service.
+     */
+    private static void cleanUp(ScheduledExecutorService scheduledExecutorSrvc) {
+        scheduledExecutorSrvc.shutdown();
+
+        exitPrivateMode();
     }
 
     /**

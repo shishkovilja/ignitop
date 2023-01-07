@@ -38,6 +38,8 @@ public class TopologyInformationUpdater {
             QueryResult topVerRes = SqlQueries.topologyVersion(client);
             QueryResult clusterSummaryRes = SqlQueries.clusterSummary(client);
 
+            IgniTop.clearScreen();
+
             System.out.println(">>>>>> Topology Information: " + LocalDateTime.now() + " <<<<<<");
 
             printWithLabel(SqlQueries.onlineNodes(client), ">>>>>> Online baseline nodes:");
