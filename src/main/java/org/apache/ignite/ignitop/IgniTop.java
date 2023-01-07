@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.configuration.ClientConfiguration;
+import org.fusesource.jansi.AnsiConsole;
 
 /**
  *
@@ -48,16 +49,20 @@ public class IgniTop {
      * Enter private mode with alternative buffer.
      */
     private static void privateMode() {
-        System.out.println("\033[?1049h");
-        System.out.flush();
+        AnsiConsole.systemInstall();
+
+        AnsiConsole.out.println("\033[?1049h");
+        AnsiConsole.out.flush();
     }
 
     /**
      * Exit private mode, i.e. disable alternative buffer.
      */
     private static void exitPrivateMode() {
-        System.out.println("\033[?1049l");
-        System.out.flush();
+        AnsiConsole.out.println("\033[?1049l");
+        AnsiConsole.out.flush();
+
+        AnsiConsole.systemUninstall();
     }
 
     /**
