@@ -29,6 +29,12 @@ public class IgniTop {
              IgniteClient client = Ignition.startClient(new ClientConfiguration().setAddresses("127.0.0.1:10800"))) {
             TopologyInformationUpdater topUpdater = new TopologyInformationUpdater(client, new UserInterface(terminal));
 
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                executor.shutdown();
+
+                terminal.close();
+            }));
+
             ScheduledFuture<?> fut = executor.scheduleAtFixedRate(topUpdater::body, 0, DEFAULT_UPDATE_INTERVAL,
                 TimeUnit.SECONDS);
 
