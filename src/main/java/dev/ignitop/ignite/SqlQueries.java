@@ -1,9 +1,10 @@
-package org.apache.ignite.ignitop;
+package dev.ignitop.ignite;
 
 import java.util.List;
 import org.apache.ignite.cache.query.FieldsQueryCursor;
 import org.apache.ignite.cache.query.SqlFieldsQuery;
 import org.apache.ignite.client.IgniteClient;
+import dev.ignitop.util.QueryResult;
 
 /**
  *
