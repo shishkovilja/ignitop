@@ -42,6 +42,7 @@ public class Terminal implements AutoCloseable {
         out.println("\033[?1049h");
         out.flush();
 
+        hideCursor();
         eraseScreen();
     }
 
@@ -49,10 +50,38 @@ public class Terminal implements AutoCloseable {
      * Exit private mode, i.e. disable alternative buffer.
      */
     private void exitPrivateMode() {
+        eraseScreen();
+
         out.println("\033[?1049l");
         out.flush();
 
+        showCursor();
+
         AnsiConsole.systemUninstall();
+    }
+
+    /**
+     *
+     */
+    private void hideCursor() {
+        out.print("\033[?25l");
+        out.flush();
+    }
+
+    /**
+     *
+     */
+    private void showCursor() {
+        out.print("\033[?25h");
+        out.flush();
+    }
+
+    /**
+     *
+     */
+    public void eraseScreen() {
+        out.print("\033[H\033[2J");
+        out.flush();
     }
 
     /** {@inheritDoc} */
@@ -85,13 +114,5 @@ public class Terminal implements AutoCloseable {
         int width = AnsiConsole.getTerminalWidth();
 
         return width > 0 ? width : DEFAULT_TERMINAL_WIDTH;
-    }
-
-    /**
-     *
-     */
-    public void eraseScreen() {
-        out.print("\033[H\033[2J");
-        out.flush();
     }
 }

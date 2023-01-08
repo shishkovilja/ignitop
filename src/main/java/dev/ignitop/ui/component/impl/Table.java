@@ -106,13 +106,12 @@ public class Table implements TerminalComponent {
 
         printHeader(strFormat, hdr.toArray());
 
-        if (rows.isEmpty())
-            System.out.println("(empty)");
-        
         for (List<?> row : rows) {
             System.out.printf(strFormat, row.toArray());
             System.out.println();
         }
+
+        System.out.println("Total items: " + rows.size());
     }
 
     /** {@inheritDoc} */
@@ -125,7 +124,14 @@ public class Table implements TerminalComponent {
      * @param columnNames Column names.
      */
     private void printHeader(String format, Object... columnNames) {
-        System.out.printf(ansi().fgBlack().bg(Ansi.Color.WHITE).a(format).reset().toString(), columnNames);
+        String hdrFmtStr = ansi()
+            .fgBlack()
+            .bg(Ansi.Color.WHITE)
+            .a(format)
+            .reset()
+            .toString();
+
+        System.out.printf(hdrFmtStr, columnNames);
         System.out.println();
     }
 }
