@@ -18,7 +18,12 @@ public class Label implements TerminalComponent {
     }
 
     /** {@inheritDoc} */
-    @Override public void renderWith(Terminal terminal) {
-        terminal.out().println(text);
+    @Override public void render(Terminal terminal, int width) {
+        terminal.out().println(text.length() > width ? text.substring(0, width) : text);
+    }
+
+    /** {@inheritDoc} */
+    @Override public int contentWidth() {
+        return text.length();
     }
 }

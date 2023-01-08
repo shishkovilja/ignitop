@@ -1,6 +1,7 @@
 package dev.ignitop.ui.component.impl;
 
 import dev.ignitop.ui.Terminal;
+import dev.ignitop.ui.TerminalUI;
 import dev.ignitop.ui.component.TerminalComponent;
 
 /**
@@ -18,8 +19,13 @@ public class EmptySpace implements TerminalComponent {
     }
 
     /** {@inheritDoc} */
-    @Override public void renderWith(Terminal terminal) {
+    @Override public void render(Terminal terminal, int width) {
         for (int i = 0; i < size; i++)
             terminal.out().println();
+    }
+
+    /** {@inheritDoc} */
+    @Override public int contentWidth() {
+        return TerminalUI.WHOLE_LINE;
     }
 }

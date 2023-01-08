@@ -8,11 +8,17 @@ import org.fusesource.jansi.AnsiConsole;
  */
 @SuppressWarnings("resource")
 public class Terminal implements AutoCloseable {
+    /** Default terminal width. */
+    public static final int DEFAULT_TERMINAL_WIDTH = 80;
+
     /** Standard output print stream. */
     private final PrintStream out;
 
     /** Error output print stream. */
     private final PrintStream err;
+
+    /** Closed state marker. */
+    private boolean closed;
 
     /**
      * Default constructor.
@@ -48,6 +54,15 @@ public class Terminal implements AutoCloseable {
         AnsiConsole.systemUninstall();
     }
 
+    /** {@inheritDoc} */
+    @Override public void close() {
+        if (!closed) {
+            exitPrivateMode();
+
+            closed = true;
+        }
+    }
+
     /**
      * @return Standard output print stream.
      */
@@ -62,8 +77,12 @@ public class Terminal implements AutoCloseable {
         return err;
     }
 
-    /** {@inheritDoc} */
-    @Override public void close() {
-        exitPrivateMode();
+    /**
+     *
+     */
+    public int width() {
+        int width = AnsiConsole.getTerminalWidth();
+
+        return width > 0 ? width : DEFAULT_TERMINAL_WIDTH;
     }
 }

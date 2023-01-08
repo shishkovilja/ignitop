@@ -75,9 +75,6 @@ public final class SqlQueries {
         try (FieldsQueryCursor<List<?>> qryCursor = client.query(new SqlFieldsQuery(sql).setArgs(args))) {
             return new QueryResult(qryCursor);
         }
-        catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 
     /**

@@ -20,7 +20,7 @@ import static dev.ignitop.ui.TerminalUI.EMPTY_SPACE;
  */
 public class TopologyInformationUpdater {
     /** Previous nodes list. */
-    private final AtomicReference<Collection<ClusterNode>> prevNodes = new AtomicReference<>(Collections.emptyList());
+    private final AtomicReference<Collection<ClusterNode>> prevNodesRef = new AtomicReference<>(Collections.emptyList());
 
     /** Client. */
     private final IgniteClient client;
@@ -40,37 +40,36 @@ public class TopologyInformationUpdater {
      *
      */
     public void body() {
-        if (noTopologyChanges())
-            return;
+        if (ui.resized() || hasTopologyChanges()) {
+            QueryResult crdRes = SqlQueries.coordinator(client);
+            QueryResult topVerRes = SqlQueries.topologyVersion(client);
+            QueryResult clusterSummaryRes = SqlQueries.clusterSummary(client);
 
-        QueryResult crdRes = SqlQueries.coordinator(client);
-        QueryResult topVerRes = SqlQueries.topologyVersion(client);
-        QueryResult clusterSummaryRes = SqlQueries.clusterSummary(client);
+            ArrayList<TerminalComponent> components = new ArrayList<>();
 
-        ArrayList<TerminalComponent> components = new ArrayList<>();
+            components.add(new Label("Cluster information"));
+            components.add(new Label("Time: " + LocalDateTime.now()));
+            components.add(EMPTY_SPACE);
 
-        components.add(new Label("Cluster information"));
-        components.add(new Label("Time: " + LocalDateTime.now()));
-        components.add(EMPTY_SPACE);
+            components.add(new Label("Online baseline nodes:"));
+            components.add(toTable(SqlQueries.onlineNodes(client)));
+            components.add(EMPTY_SPACE);
 
-        components.add(new Label("Online baseline nodes:"));
-        components.add(toTable(SqlQueries.onlineNodes(client)));
-        components.add(EMPTY_SPACE);
+            components.add(new Label("Offline baseline nodes:"));
+            components.add(toTable(SqlQueries.offlineNodes(client)));
+            components.add(EMPTY_SPACE);
 
-        components.add(new Label("Offline baseline nodes:"));
-        components.add(toTable(SqlQueries.offlineNodes(client)));
-        components.add(EMPTY_SPACE);
+            components.add(new Label("Other server nodes:"));
+            components.add(toTable(SqlQueries.otherNodes(client)));
+            components.add(EMPTY_SPACE);
 
-        components.add(new Label("Other server nodes:"));
-        components.add(toTable(SqlQueries.otherNodes(client)));
-        components.add(EMPTY_SPACE);
+            components.add(new Label("Client nodes:"));
+            components.add(toTable(SqlQueries.clientNodes(client)));
+            components.add(EMPTY_SPACE);
 
-        components.add(new Label("Client nodes:"));
-        components.add(toTable(SqlQueries.clientNodes(client)));
-        components.add(EMPTY_SPACE);
-
-        ui.setComponents(components);
-        ui.refresh();
+            ui.setComponents(components);
+            ui.refresh();
+        }
     }
 
     /**
@@ -83,12 +82,12 @@ public class TopologyInformationUpdater {
     /**
      *
      */
-    private boolean noTopologyChanges() {
-        Collection<ClusterNode> nodes0 = prevNodes.get();
-        Collection<ClusterNode> nodes = client.cluster().nodes();
+    private boolean hasTopologyChanges() {
+        Collection<ClusterNode> prevNodes = prevNodesRef.get();
+        Collection<ClusterNode> curNodes = client.cluster().nodes();
 
-        prevNodes.set(nodes);
+        prevNodesRef.set(curNodes);
 
-        return nodes0.size() == nodes.size() && nodes0.containsAll(nodes);
+        return prevNodes.size() != curNodes.size() || !prevNodes.containsAll(curNodes);
     }
 }
