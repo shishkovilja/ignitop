@@ -39,6 +39,7 @@ public class TopologyInformationUpdater {
     /**
      *
      */
+    //TODO: It is not correct place for body. UI resize and other should be handled in some unified runnable.
     public void body() {
         if (ui.resized() || hasTopologyChanges()) {
             QueryResult crdRes = SqlQueries.coordinator(client);
