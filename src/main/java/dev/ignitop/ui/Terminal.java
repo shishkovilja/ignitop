@@ -44,11 +44,10 @@ public class Terminal implements AutoCloseable {
      */
     private void exitPrivateMode() {
         eraseScreen();
+        showCursor();
 
         out.println("\033[?1049l");
         out.flush();
-
-        showCursor();
 
         AnsiConsole.systemUninstall();
     }
