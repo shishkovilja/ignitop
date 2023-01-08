@@ -1,7 +1,8 @@
 package dev.ignitop.ui;
 
-import java.io.PrintStream;
 import org.fusesource.jansi.AnsiConsole;
+
+import static java.lang.System.out;
 
 /**
  *
@@ -10,12 +11,6 @@ public class Terminal implements AutoCloseable {
     /** Default terminal width. */
     public static final int DEFAULT_TERMINAL_WIDTH = 80;
 
-    /** Standard output print stream. */
-    private final PrintStream out;
-
-    /** Error output print stream. */
-    private final PrintStream err;
-
     /** Closed state marker. */
     private boolean closed;
 
@@ -23,12 +18,10 @@ public class Terminal implements AutoCloseable {
      * Default constructor.
      */
     public Terminal() {
-//        if (System.console() == null)
-//            throw new IllegalStateException("No suitable instance of console found. Windows command line or " +
-//                "linux terminal application must be user in order to run IgniTop.");
-
-        out = System.out;
-        err = System.err;
+    // TODO: How we should handle null console?
+    //    if (System.console() == null)
+    //        throw new IllegalStateException("No suitable instance of console found. Windows command line or " +
+    //            "linux terminal application must be user in order to run IgniTop.");
 
         enterPrivateMode();
     }
@@ -91,20 +84,6 @@ public class Terminal implements AutoCloseable {
 
             closed = true;
         }
-    }
-
-    /**
-     * @return Standard output print stream.
-     */
-    public PrintStream out() {
-        return out;
-    }
-
-    /**
-     * @return Error output print stream.
-     */
-    public PrintStream err() {
-        return err;
     }
 
     /**

@@ -34,13 +34,6 @@ public class TerminalUI {
     }
 
     /**
-     *
-     */
-    public void emptyLine() {
-        terminal.out().println();
-    }
-
-    /**
      * @param components Components.
      */
     public void setComponents(List<TerminalComponent> components) {
