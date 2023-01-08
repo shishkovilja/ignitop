@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
 import dev.ignitop.ui.component.TerminalComponent;
 import dev.ignitop.ui.TerminalUI;
+import dev.ignitop.ui.component.impl.Header;
 import dev.ignitop.ui.component.impl.Label;
 import dev.ignitop.ui.component.impl.Table;
 import dev.ignitop.util.QueryResult;
@@ -48,23 +49,28 @@ public class TopologyInformationUpdater {
 
             ArrayList<TerminalComponent> components = new ArrayList<>();
 
-            components.add(new Label("Cluster information"));
-            components.add(new Label("Time: " + LocalDateTime.now()));
+            components.add(new Header("Cluster information"));
+
+            components.add(Label.bold("Time:")
+                .normal(LocalDateTime.now())
+                .build());
+
             components.add(EMPTY_SPACE);
 
-            components.add(new Label("Online baseline nodes:"));
+            components.add(Label.underline("Online baseline nodes:").build());
             components.add(toTable(SqlQueries.onlineNodes(client)));
+
             components.add(EMPTY_SPACE);
 
-            components.add(new Label("Offline baseline nodes:"));
+            components.add(Label.underline("Offline baseline nodes:").build());
             components.add(toTable(SqlQueries.offlineNodes(client)));
             components.add(EMPTY_SPACE);
 
-            components.add(new Label("Other server nodes:"));
+            components.add(Label.underline("Other server nodes:").build());
             components.add(toTable(SqlQueries.otherNodes(client)));
             components.add(EMPTY_SPACE);
 
-            components.add(new Label("Client nodes:"));
+            components.add(Label.underline("Client nodes:").build());
             components.add(toTable(SqlQueries.clientNodes(client)));
             components.add(EMPTY_SPACE);
 
