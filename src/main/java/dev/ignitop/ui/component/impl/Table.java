@@ -4,16 +4,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-import dev.ignitop.ui.Terminal;
 import dev.ignitop.ui.component.TerminalComponent;
+import org.fusesource.jansi.Ansi;
+
+import static org.fusesource.jansi.Ansi.ansi;
 
 /**
  *
  */
 public class Table implements TerminalComponent {
-    /** Horizontal line character. */
-    public static final char HORIZONTAL_LINE = (char)0x02500;
-
     /** A gap between cells. */
     public static final int CELLS_GAP = 2;
 
@@ -73,7 +72,7 @@ public class Table implements TerminalComponent {
     }
 
     /** {@inheritDoc} */
-    @Override public void render(Terminal terminal, int width) {
+    @Override public void render(int width) {
         int widthDelta = contentWidth - width;
 
         for (int i = 0; i < columnWidths.size(); i++) {
@@ -103,14 +102,17 @@ public class Table implements TerminalComponent {
 
         String strFormat = columnWidths.stream()
             .map(l -> "%-" + l + '.' + (l - CELLS_GAP) + 's')
-            .collect(Collectors.joining()) + "%n";
+            .collect(Collectors.joining());
 
-        printHeader(terminal, strFormat, width, hdr.toArray());
+        printHeader(strFormat, hdr.toArray());
 
-        for (List<?> row : rows)
-            terminal.out().printf(strFormat, row.toArray());
-
-        fillLine(terminal, width, HORIZONTAL_LINE);
+        if (rows.isEmpty())
+            System.out.println("(empty)");
+        
+        for (List<?> row : rows) {
+            System.out.printf(strFormat, row.toArray());
+            System.out.println();
+        }
     }
 
     /** {@inheritDoc} */
@@ -119,23 +121,11 @@ public class Table implements TerminalComponent {
     }
 
     /**
-     * @param terminal Terminal.
-     * @param length Length.
-     * @param c Character for liine filling.
-     */
-    private void fillLine(Terminal terminal, int length, char c) {
-        terminal.out().println(String.valueOf(c).repeat(length));
-    }
-
-    /**
-     * @param terminal Terminal.
      * @param format Format.
-     * @param rowLength Row length.
      * @param columnNames Column names.
      */
-    private void printHeader(Terminal terminal, String format, int rowLength, Object... columnNames) {
-        fillLine(terminal, rowLength, HORIZONTAL_LINE);
-        terminal.out().printf(format, columnNames);
-        fillLine(terminal, rowLength, HORIZONTAL_LINE);
+    private void printHeader(String format, Object... columnNames) {
+        System.out.printf(ansi().fgBlack().bg(Ansi.Color.WHITE).a(format).reset().toString(), columnNames);
+        System.out.println();
     }
 }

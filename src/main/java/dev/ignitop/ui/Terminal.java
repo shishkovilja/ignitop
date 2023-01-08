@@ -6,7 +6,6 @@ import org.fusesource.jansi.AnsiConsole;
 /**
  *
  */
-@SuppressWarnings("resource")
 public class Terminal implements AutoCloseable {
     /** Default terminal width. */
     public static final int DEFAULT_TERMINAL_WIDTH = 80;
@@ -28,10 +27,10 @@ public class Terminal implements AutoCloseable {
 //            throw new IllegalStateException("No suitable instance of console found. Windows command line or " +
 //                "linux terminal application must be user in order to run IgniTop.");
 
-        enterPrivateMode();
+        out = System.out;
+        err = System.err;
 
-        out = AnsiConsole.out();
-        err = AnsiConsole.err();
+        enterPrivateMode();
     }
 
     /**
@@ -40,16 +39,18 @@ public class Terminal implements AutoCloseable {
     private void enterPrivateMode() {
         AnsiConsole.systemInstall();
 
-        AnsiConsole.out().println("\033[?1049h");
-        AnsiConsole.out().flush();
+        out.println("\033[?1049h");
+        out.flush();
+
+        eraseScreen();
     }
 
     /**
      * Exit private mode, i.e. disable alternative buffer.
      */
     private void exitPrivateMode() {
-        AnsiConsole.out().println("\033[?1049l");
-        AnsiConsole.out().flush();
+        out.println("\033[?1049l");
+        out.flush();
 
         AnsiConsole.systemUninstall();
     }
@@ -84,5 +85,13 @@ public class Terminal implements AutoCloseable {
         int width = AnsiConsole.getTerminalWidth();
 
         return width > 0 ? width : DEFAULT_TERMINAL_WIDTH;
+    }
+
+    /**
+     *
+     */
+    public void eraseScreen() {
+        out.print("\033[H\033[2J");
+        out.flush();
     }
 }

@@ -51,12 +51,12 @@ public class TerminalUI {
      *
      */
     public void refresh() {
-        clearScreen();
+        terminal.eraseScreen();
 
         width = terminal.width();
 
         for (TerminalComponent component : components)
-            component.render(terminal, width - 2);
+            component.render(width);
     }
 
     /**
@@ -64,13 +64,5 @@ public class TerminalUI {
      */
     public boolean resized() {
         return width != terminal.width();
-    }
-
-    /**
-     *
-     */
-    public void clearScreen() {
-        terminal.out().print("\033[H\033[2J");
-        terminal.out().flush();
     }
 }
