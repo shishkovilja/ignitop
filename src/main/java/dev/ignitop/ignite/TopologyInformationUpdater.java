@@ -4,9 +4,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
-import dev.ignitop.ui.component.TerminalComponent;
 import dev.ignitop.ui.TerminalUI;
+import dev.ignitop.ui.component.TerminalComponent;
+import dev.ignitop.ui.component.impl.EmptySpace;
 import dev.ignitop.ui.component.impl.Header;
 import dev.ignitop.ui.component.impl.Label;
 import dev.ignitop.ui.component.impl.Table;
@@ -57,26 +59,28 @@ public class TopologyInformationUpdater {
 
             components.add(EMPTY_SPACE);
 
-            components.add(Label.underline("Online baseline nodes:").build());
-            components.add(toTable(SqlQueries.onlineNodes(client)));
-
-            components.add(EMPTY_SPACE);
-
-            components.add(Label.underline("Offline baseline nodes:").build());
-            components.add(toTable(SqlQueries.offlineNodes(client)));
-            components.add(EMPTY_SPACE);
-
-            components.add(Label.underline("Other server nodes:").build());
-            components.add(toTable(SqlQueries.otherNodes(client)));
-            components.add(EMPTY_SPACE);
-
-            components.add(Label.underline("Client nodes:").build());
-            components.add(toTable(SqlQueries.clientNodes(client)));
-            components.add(EMPTY_SPACE);
+            addTable(components, "Online baseline nodes", toTable(SqlQueries.onlineNodes(client)));
+            addTable(components, "Offline baseline nodes", toTable(SqlQueries.offlineNodes(client)));
+            addTable(components, "Other server nodes", toTable(SqlQueries.otherNodes(client)));
+            addTable(components, "Client nodes", toTable(SqlQueries.clientNodes(client)));
 
             ui.setComponents(components);
             ui.refresh();
         }
+    }
+
+    /**
+     * Add table with header and surrounding empty spaces.
+     *
+     * @param components Components.
+     * @param hdr Table header.
+     * @param tbl Table.
+     */
+    private void addTable(List<TerminalComponent> components, String hdr, Table tbl) {
+        components.add(new Header(hdr));
+        components.add(EMPTY_SPACE);
+        components.add(tbl);
+        components.add(new EmptySpace(2));
     }
 
     /**
