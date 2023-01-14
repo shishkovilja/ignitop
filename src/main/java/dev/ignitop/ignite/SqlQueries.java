@@ -26,6 +26,22 @@ public final class SqlQueries {
         "   where name ='io.discovery.Coordinator'" +
         ")";
 
+    /** Ignite version. */
+    public static final String IGNITE_VERSION = "select VERSION" +
+        "from SYS.NODES" +
+        "where NODE_ID = (" +
+        "   select VALUE from SYS.METRICS" +
+        "   where name ='io.discovery.Coordinator'" +
+        ")";
+
+    /** Cluster state. */
+    public static final String CLUSTER_STATE = "select VALUE from SYS.METRICS " +
+        "where NAME = 'ignite.clusterState'";
+
+    /** Cluster state. */
+    public static final String CLUSTER_REBALANCED = "select VALUE from SYS.METRICS " +
+        "where NAME = 'cluster.Rebalanced'";
+
     /** Online baseline nodes. */
     public static final String ONLINE_BASELINE_NODES = "select NODE_ORDER, CONSISTENT_ID, HOSTNAMES, ADDRESSES " +
         "from SYS.NODES " +
@@ -82,6 +98,27 @@ public final class SqlQueries {
      */
     public static QueryResult coordinator(IgniteClient client) {
         return executeQuery(client, COORDINATOR);
+    }
+
+    /**
+     * @param client Client.
+     */
+    public static QueryResult igniteVersion(IgniteClient client) {
+        return executeQuery(client, IGNITE_VERSION);
+    }
+
+    /**
+     * @param client Client.
+     */
+    public static QueryResult clusterState(IgniteClient client) {
+        return executeQuery(client, CLUSTER_STATE);
+    }
+
+    /**
+     * @param client Client.
+     */
+    public static QueryResult clusterRebalanced(IgniteClient client) {
+        return executeQuery(client, CLUSTER_REBALANCED);
     }
 
     /**
