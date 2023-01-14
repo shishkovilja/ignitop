@@ -35,6 +35,6 @@ public class Header extends Title {
 
     /** {@inheritDoc} */
     @Override protected Ansi.Color bg() {
-        return Ansi.Color.BLACK;
+        return Ansi.Color.DEFAULT;
     }
 }

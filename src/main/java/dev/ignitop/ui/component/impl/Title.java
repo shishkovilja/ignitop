@@ -23,18 +23,18 @@ public class Title implements TerminalComponent {
     @Override public void render(int width) {
         String text0 = leftBracket() + text + rightBracket();
 
-        int delta = Math.max(0, width - text.length());
+        int delta = Math.max(0, width - text0.length());
 
         if (delta == 0)
-            text0 = text.substring(0, width);
+            text0 = text0.substring(0, width);
 
         int leftMarginSize = delta / 2;
-        int rigthMarginSize = Math.max(0, width - leftMarginSize - text.length());
+        int rigthMarginSize = Math.max(0, width - leftMarginSize - text0.length());
 
         System.out.println(ansi()
             .fg(fg())
             .bg(bg())
-            .a(margin().repeat(leftMarginSize - 1))
+            .a(margin().repeat(leftMarginSize))
             .bold()
             .a(text0)
             .boldOff()
@@ -62,7 +62,7 @@ public class Title implements TerminalComponent {
      */
     protected String margin() {
         // Horizontal line
-        return "\u2500";
+        return "─";
     }
 
     /**
