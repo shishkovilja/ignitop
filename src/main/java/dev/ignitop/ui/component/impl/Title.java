@@ -61,7 +61,6 @@ public class Title implements TerminalComponent {
      *
      */
     protected String margin() {
-        // Horizontal line
         return "─";
     }
 
