@@ -10,6 +10,7 @@ import dev.ignitop.ui.TerminalUI;
 import dev.ignitop.ui.component.TerminalComponent;
 import dev.ignitop.ui.component.impl.EmptySpace;
 import dev.ignitop.ui.component.impl.Header;
+import dev.ignitop.ui.component.impl.Title;
 import dev.ignitop.ui.component.impl.Label;
 import dev.ignitop.ui.component.impl.Table;
 import dev.ignitop.util.QueryResult;
@@ -45,15 +46,15 @@ public class TopologyInformationUpdater {
     //TODO: It is not correct place for body. UI resize and other should be handled in some unified runnable.
     public void body() {
         if (ui.resized() || hasTopologyChanges()) {
+            ArrayList<TerminalComponent> components = new ArrayList<>();
+
+            components.add(new Title("Topology"));
+
             QueryResult crdRes = SqlQueries.coordinator(client);
             QueryResult topVerRes = SqlQueries.topologyVersion(client);
             QueryResult clusterSummaryRes = SqlQueries.clusterSummary(client);
 
-            ArrayList<TerminalComponent> components = new ArrayList<>();
-
-            components.add(new Header("Cluster information"));
-
-            components.add(Label.bold("Time:")
+            components.add(Label.bold("Information updated:")
                 .normal(LocalDateTime.now())
                 .build());
 
