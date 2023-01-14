@@ -44,6 +44,15 @@ public class Label implements TerminalComponent {
         return new Builder().underline(obj);
     }
 
+    /**
+     * Add whitespaces.
+     *
+     * @param num Amount of whitespaces.
+     */
+    public static Builder spaces(int num) {
+        return new Builder().spaces(num);
+    }
+
     /** {@inheritDoc} */
     @Override public void render(int width) {
         System.out.println(text.length() > width ? text.substring(0, width) : text);
@@ -75,7 +84,7 @@ public class Label implements TerminalComponent {
 
         /** */
         public Label build() {
-            return new Label(ansi.toString());
+            return new Label(ansi.reset().toString());
         }
 
         /** */
@@ -105,6 +114,16 @@ public class Label implements TerminalComponent {
             ansi.a(Ansi.Attribute.UNDERLINE)
                 .a(obj.toString())
                 .reset();
+
+            return this;
+        }
+
+        /** */
+        public Builder spaces(int num) {
+            if (empty)
+                empty = false;
+
+            ansi.a(" ".repeat(num));
 
             return this;
         }

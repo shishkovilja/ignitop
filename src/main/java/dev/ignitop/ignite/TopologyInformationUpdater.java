@@ -10,14 +10,12 @@ import dev.ignitop.ui.TerminalUI;
 import dev.ignitop.ui.component.TerminalComponent;
 import dev.ignitop.ui.component.impl.EmptySpace;
 import dev.ignitop.ui.component.impl.Header;
-import dev.ignitop.ui.component.impl.Title;
 import dev.ignitop.ui.component.impl.Label;
 import dev.ignitop.ui.component.impl.Table;
+import dev.ignitop.ui.component.impl.Title;
 import dev.ignitop.util.QueryResult;
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.cluster.ClusterNode;
-
-import static dev.ignitop.ui.TerminalUI.EMPTY_SPACE;
 
 /**
  *
@@ -50,15 +48,34 @@ public class TopologyInformationUpdater {
 
             components.add(new Title("Topology"));
 
+            QueryResult igniteVerRes = SqlQueries.igniteVersion(client);
             QueryResult crdRes = SqlQueries.coordinator(client);
+            QueryResult clusterStateRes = SqlQueries.clusterState(client);
             QueryResult topVerRes = SqlQueries.topologyVersion(client);
-            QueryResult clusterSummaryRes = SqlQueries.clusterSummary(client);
+            QueryResult clusterRebalancedRes = SqlQueries.clusterRebalanced(client);
 
-            components.add(Label.bold("Information updated:")
-                .normal(LocalDateTime.now())
+            components.add(Label.normal("Ignite version:")
+                .bold(value(igniteVerRes))
+                .spaces(2)
+                .normal("Coordinator:")
+                .bold(value(crdRes))
                 .build());
 
-            components.add(EMPTY_SPACE);
+            components.add(Label.normal("State:")
+                .bold(value(clusterStateRes))
+                .spaces(2)
+                .normal("Topology version:")
+                .bold(value(topVerRes))
+                .spaces(2)
+                .normal("Rebalanced:")
+                .bold(value(clusterRebalancedRes))
+                .build());
+
+            components.add(Label.normal("Information updated:")
+                .bold(LocalDateTime.now())
+                .build());
+
+            components.add(new EmptySpace(2));
 
             addTable(components, "Online baseline nodes", toTable(SqlQueries.onlineNodes(client)));
             addTable(components, "Offline baseline nodes", toTable(SqlQueries.offlineNodes(client)));
@@ -71,6 +88,13 @@ public class TopologyInformationUpdater {
     }
 
     /**
+     * @param qryResult Query result.
+     */
+    private static Object value(QueryResult qryResult) {
+        return qryResult.rows().get(0).get(0);
+    }
+
+    /**
      * Add table with header and surrounding empty spaces.
      *
      * @param components Components.
@@ -79,7 +103,6 @@ public class TopologyInformationUpdater {
      */
     private void addTable(List<TerminalComponent> components, String hdr, Table tbl) {
         components.add(new Header(hdr));
-        components.add(EMPTY_SPACE);
         components.add(tbl);
         components.add(new EmptySpace(2));
     }

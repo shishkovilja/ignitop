@@ -14,23 +14,23 @@ public final class SqlQueries {
     public static final String CLUSTER_SUMMARY = "select NAME, VALUE from SYS.METRICS " +
         "where name like 'cluster.%'";
 
-    /** TopologyInformationUpdater version. */
-    public static final String TOPOLOGY_VERSION = "select NAME, VALUE from SYS.METRICS " +
+    /** Topology version. */
+    public static final String TOPOLOGY_VERSION = "select VALUE from SYS.METRICS " +
         "where name = 'io.discovery.CurrentTopologyVersion'";
 
     /** Coordinator. */
-    public static final String COORDINATOR = "select NODE_ORDER, CONSISTENT_ID, HOSTNAMES, ADDRESSES, VERSION " +
+    public static final String COORDINATOR = "select concat('[', CONSISTENT_ID, ', ', HOSTNAMES, ']') " +
         "from SYS.NODES " +
         "where NODE_ID = (" +
         "   select VALUE from SYS.METRICS " +
         "   where name ='io.discovery.Coordinator'" +
-        ")";
+        ");";
 
     /** Ignite version. */
-    public static final String IGNITE_VERSION = "select VERSION" +
-        "from SYS.NODES" +
+    public static final String IGNITE_VERSION = "select VERSION " +
+        "from SYS.NODES " +
         "where NODE_ID = (" +
-        "   select VALUE from SYS.METRICS" +
+        "   select VALUE from SYS.METRICS " +
         "   where name ='io.discovery.Coordinator'" +
         ")";
 

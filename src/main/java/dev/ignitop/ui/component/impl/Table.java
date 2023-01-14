@@ -126,7 +126,7 @@ public class Table implements TerminalComponent {
     private void printHeader(String format, Object... columnNames) {
         String hdrFmtStr = ansi()
             .fgBlack()
-            .bg(Ansi.Color.WHITE)
+            .bg(Ansi.Color.GREEN)
             .a(format)
             .reset()
             .toString();

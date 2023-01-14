@@ -35,8 +35,11 @@ public class Title implements TerminalComponent {
             .fg(fg())
             .bg(bg())
             .a(margin().repeat(leftMarginSize - 1))
+            .bold()
             .a(text0)
+            .boldOff()
             .a(margin().repeat(rigthMarginSize))
+            .reset()
             .toString());
     }
 
