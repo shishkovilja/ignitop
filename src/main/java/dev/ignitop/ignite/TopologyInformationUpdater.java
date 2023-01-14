@@ -1,10 +1,18 @@
 package dev.ignitop.ignite;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
-import dev.ignitop.ui.UserInterface;
+import dev.ignitop.ui.TerminalUI;
+import dev.ignitop.ui.component.TerminalComponent;
+import dev.ignitop.ui.component.impl.EmptySpace;
+import dev.ignitop.ui.component.impl.Header;
+import dev.ignitop.ui.component.impl.Label;
+import dev.ignitop.ui.component.impl.Table;
+import dev.ignitop.ui.component.impl.Title;
 import dev.ignitop.util.QueryResult;
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.cluster.ClusterNode;
@@ -14,18 +22,18 @@ import org.apache.ignite.cluster.ClusterNode;
  */
 public class TopologyInformationUpdater {
     /** Previous nodes list. */
-    private final AtomicReference<Collection<ClusterNode>> prevNodes = new AtomicReference<>(Collections.emptyList());
+    private final AtomicReference<Collection<ClusterNode>> prevNodesRef = new AtomicReference<>(Collections.emptyList());
 
     /** Client. */
     private final IgniteClient client;
     
     /** User interface. */
-    private final UserInterface ui;
+    private final TerminalUI ui;
 
     /**
      * @param client Client.
      */
-    public TopologyInformationUpdater(IgniteClient client, UserInterface ui) {
+    public TopologyInformationUpdater(IgniteClient client, TerminalUI ui) {
         this.client = client;
         this.ui = ui;
     }
@@ -33,36 +41,88 @@ public class TopologyInformationUpdater {
     /**
      *
      */
+    //TODO: It is not correct place for body. UI resize and other should be handled in some unified runnable.
     public void body() {
-        if (noTopologyChanges())
-            return;
+        if (ui.resized() || hasTopologyChanges()) {
+            ArrayList<TerminalComponent> components = new ArrayList<>();
 
-        QueryResult crdRes = SqlQueries.coordinator(client);
-        QueryResult topVerRes = SqlQueries.topologyVersion(client);
-        QueryResult clusterSummaryRes = SqlQueries.clusterSummary(client);
+            components.add(new Title("Topology"));
 
-        ui.clearScreen();
+            QueryResult igniteVerRes = SqlQueries.igniteVersion(client);
+            QueryResult crdRes = SqlQueries.coordinator(client);
+            QueryResult clusterStateRes = SqlQueries.clusterState(client);
+            QueryResult topVerRes = SqlQueries.topologyVersion(client);
+            QueryResult clusterRebalancedRes = SqlQueries.clusterRebalanced(client);
 
-        ui.label(">>>>>> Topology Information: " + LocalDateTime.now() + " <<<<<<");
+            components.add(Label.normal("Ignite version:")
+                .bold(value(igniteVerRes))
+                .spaces(2)
+                .normal("Coordinator:")
+                .bold(value(crdRes))
+                .build());
 
-        ui.printQueryResultWithLabel(SqlQueries.onlineNodes(client), ">>>>>> Online baseline nodes:");
-        ui.printQueryResultWithLabel(SqlQueries.offlineNodes(client), ">>>>>> Offline baseline nodes:");
-        ui.printQueryResultWithLabel(SqlQueries.otherNodes(client), ">>>>>> Other server nodes:");
-        ui.printQueryResultWithLabel(SqlQueries.clientNodes(client), ">>>>>> Client nodes:");
+            components.add(Label.normal("State:")
+                .bold(value(clusterStateRes))
+                .spaces(2)
+                .normal("Topology version:")
+                .bold(value(topVerRes))
+                .spaces(2)
+                .normal("Rebalanced:")
+                .bold(value(clusterRebalancedRes))
+                .build());
 
-        ui.label(">>>>>> End of topology Information <<<<<<");
-        ui.emptyLine();
+            components.add(Label.normal("Information updated:")
+                .bold(LocalDateTime.now())
+                .build());
+
+            components.add(new EmptySpace(2));
+
+            addTable(components, "Online baseline nodes", toTable(SqlQueries.onlineNodes(client)));
+            addTable(components, "Offline baseline nodes", toTable(SqlQueries.offlineNodes(client)));
+            addTable(components, "Other server nodes", toTable(SqlQueries.otherNodes(client)));
+            addTable(components, "Client nodes", toTable(SqlQueries.clientNodes(client)));
+
+            ui.setComponents(components);
+            ui.refresh();
+        }
+    }
+
+    /**
+     * @param qryResult Query result.
+     */
+    private static Object value(QueryResult qryResult) {
+        return qryResult.rows().get(0).get(0);
+    }
+
+    /**
+     * Add table with header and surrounding empty spaces.
+     *
+     * @param components Components.
+     * @param hdr Table header.
+     * @param tbl Table.
+     */
+    private void addTable(List<TerminalComponent> components, String hdr, Table tbl) {
+        components.add(new Header(hdr));
+        components.add(tbl);
+        components.add(new EmptySpace(2));
+    }
+
+    /**
+     * @param qryResult Query result.
+     */
+    private Table toTable(QueryResult qryResult) {
+        return new Table(qryResult.columns(), qryResult.rows());
     }
 
     /**
      *
      */
-    private boolean noTopologyChanges() {
-        Collection<ClusterNode> nodes0 = prevNodes.get();
-        Collection<ClusterNode> nodes = client.cluster().nodes();
+    private boolean hasTopologyChanges() {
+        Collection<ClusterNode> prevNodes = prevNodesRef.get();
+        Collection<ClusterNode> curNodes = client.cluster().nodes();
 
-        prevNodes.set(nodes);
+        prevNodesRef.set(curNodes);
 
-        return nodes0.size() == nodes.size() && nodes0.containsAll(nodes);
+        return prevNodes.size() != curNodes.size() || !prevNodes.containsAll(curNodes);
     }
 }

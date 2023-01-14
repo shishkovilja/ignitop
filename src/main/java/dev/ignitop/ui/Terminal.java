@@ -1,31 +1,29 @@
 package dev.ignitop.ui;
 
-import java.io.PrintStream;
 import org.fusesource.jansi.AnsiConsole;
+
+import static java.lang.System.out;
 
 /**
  *
  */
-@SuppressWarnings("resource")
 public class Terminal implements AutoCloseable {
-    /** Standard output print stream. */
-    private final PrintStream out;
+    /** Default terminal width. */
+    public static final int DEFAULT_TERMINAL_WIDTH = 80;
 
-    /** Error output print stream. */
-    private final PrintStream err;
+    /** Closed state marker. */
+    private boolean closed;
 
     /**
      * Default constructor.
      */
     public Terminal() {
-        if (System.console() == null)
-            throw new IllegalStateException("No suitable instance of console found. Windows command line or " +
-                "linux terminal application must be user in order to run IgniTop.");
+    // TODO: How we should handle null console?
+    //    if (System.console() == null)
+    //        throw new IllegalStateException("No suitable instance of console found. Windows command line or " +
+    //            "linux terminal application must be user in order to run IgniTop.");
 
         enterPrivateMode();
-
-        out = AnsiConsole.out();
-        err = AnsiConsole.err();
     }
 
     /**
@@ -34,36 +32,65 @@ public class Terminal implements AutoCloseable {
     private void enterPrivateMode() {
         AnsiConsole.systemInstall();
 
-        AnsiConsole.out().println("\033[?1049h");
-        AnsiConsole.out().flush();
+        out.println("\033[?1049h");
+        out.flush();
+
+        hideCursor();
+        eraseScreen();
     }
 
     /**
      * Exit private mode, i.e. disable alternative buffer.
      */
     private void exitPrivateMode() {
-        AnsiConsole.out().println("\033[?1049l");
-        AnsiConsole.out().flush();
+        eraseScreen();
+        showCursor();
+
+        out.println("\033[?1049l");
+        out.flush();
 
         AnsiConsole.systemUninstall();
     }
 
     /**
-     * @return Standard output print stream.
+     *
      */
-    public PrintStream out() {
-        return out;
+    private void hideCursor() {
+        out.print("\033[?25l");
+        out.flush();
     }
 
     /**
-     * @return Error output print stream.
+     *
      */
-    public PrintStream err() {
-        return err;
+    private void showCursor() {
+        out.print("\033[?25h");
+        out.flush();
+    }
+
+    /**
+     *
+     */
+    public void eraseScreen() {
+        out.print("\033[H\033[2J");
+        out.flush();
     }
 
     /** {@inheritDoc} */
     @Override public void close() {
-        exitPrivateMode();
+        if (!closed) {
+            exitPrivateMode();
+
+            closed = true;
+        }
+    }
+
+    /**
+     *
+     */
+    public int width() {
+        int width = AnsiConsole.getTerminalWidth();
+
+        return width > 0 ? width : DEFAULT_TERMINAL_WIDTH;
     }
 }

@@ -6,7 +6,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import dev.ignitop.ui.Terminal;
-import dev.ignitop.ui.UserInterface;
+import dev.ignitop.ui.TerminalUI;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.configuration.ClientConfiguration;
@@ -27,7 +27,7 @@ public class IgniTop {
 
         try (Terminal terminal = new Terminal();
              IgniteClient client = Ignition.startClient(new ClientConfiguration().setAddresses("127.0.0.1:10800"))) {
-            TopologyInformationUpdater topUpdater = new TopologyInformationUpdater(client, new UserInterface(terminal));
+            TopologyInformationUpdater topUpdater = new TopologyInformationUpdater(client, new TerminalUI(terminal));
 
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 executor.shutdown();
