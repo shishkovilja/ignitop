@@ -3,15 +3,11 @@ package dev.ignitop.ui;
 import java.util.ArrayList;
 import java.util.List;
 import dev.ignitop.ui.component.TerminalComponent;
-import dev.ignitop.ui.component.impl.EmptySpace;
 
 /**
  *
  */
 public class TerminalUI {
-    /** One line empty space. */
-    public static final EmptySpace EMPTY_SPACE = new EmptySpace(1);
-
     /** Size of a component, which take up whole line. */
     public static final int WHOLE_LINE = -1;
 
@@ -48,8 +44,13 @@ public class TerminalUI {
 
         width = terminal.width();
 
+        int maxComponentWidth = components.stream()
+            .mapToInt(TerminalComponent::contentWidth)
+            .max()
+            .orElse(width);
+
         for (TerminalComponent component : components)
-            component.render(width);
+            component.render(Math.min(maxComponentWidth, width));
     }
 
     /**
