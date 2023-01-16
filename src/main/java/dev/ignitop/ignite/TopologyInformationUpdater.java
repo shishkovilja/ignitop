@@ -2,10 +2,10 @@ package dev.ignitop.ignite;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -19,9 +19,9 @@ import dev.ignitop.ui.component.impl.Title;
 import dev.ignitop.util.QueryResult;
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.cluster.ClusterNode;
+import org.jetbrains.annotations.Nullable;
 
 import static dev.ignitop.ignite.MetricUtils.findFirstInView;
-import static java.util.stream.Collectors.groupingBy;
 
 /**
  *
@@ -56,27 +56,27 @@ public class TopologyInformationUpdater {
 
         components.add(new Title("Topology"));
 
-        QueryResult igniteVerRes = SqlQueries.igniteVersion(client);
-        QueryResult crdRes = SqlQueries.coordinator(client);
-        QueryResult clusterStateRes = SqlQueries.clusterState(client);
-        QueryResult topVerRes = SqlQueries.topologyVersion(client);
-        QueryResult clusterRebalancedRes = SqlQueries.clusterRebalanced(client);
+        ClusterNode crd = client.cluster().forOldest().node();
 
         components.add(Label.normal("Ignite version:")
-            .bold(value(igniteVerRes))
+            .bold(crd.version())
             .spaces(2)
             .normal("Coordinator:")
-            .bold(value(crdRes))
+            .bold("[" + crd.consistentId() + ',' + crd.hostNames() + ']')
             .build());
 
+        Object clusterState = MetricUtils.findFirstMetric(client, "ignite.clusterState");
+        Object topVer = MetricUtils.findFirstMetric(client, "io.discovery.CurrentTopologyVersion");
+        Object rebalanced = MetricUtils.findFirstMetric(client, "cluster.Rebalanced");
+
         components.add(Label.normal("State:")
-            .bold(value(clusterStateRes))
+            .bold(clusterState)
             .spaces(2)
             .normal("Topology version:")
-            .bold(value(topVerRes))
+            .bold(topVer)
             .spaces(2)
             .normal("Rebalanced:")
-            .bold(value(clusterRebalancedRes))
+            .bold(rebalanced)
             .build());
 
         components.add(new EmptySpace(2));
@@ -93,20 +93,43 @@ public class TopologyInformationUpdater {
     // TODO: refactor boilerplate
     // TODO: fix incorrect info
     private Set<OfflineNodeInfo> offlineByConsistentIds(Collection<?> offlineBaselineNodesId) {
-        List<List<?>> baselineNodeAttrs = findFirstInView(client, "BASELINE_NODE_ATTRIBUTES");
+        List<List<?>> allNodesAttrs = findFirstInView(client, "BASELINE_NODE_ATTRIBUTES");
 
-        Map<?, List<List<?>>> offlineNodesIps = baselineNodeAttrs.stream()
-            .filter(l -> Objects.equals("org.apache.ignite.ips", l.get(1)))
-            .collect(groupingBy(l -> l.get(0)));
+        List<String> attrsFilter = List.of("org.apache.ignite.ips", "TcpCommunicationSpi.comm.tcp.host.names");
 
-        Map<?, List<List<?>>> offlineNodesHostnames = baselineNodeAttrs.stream()
-            .filter(l -> Objects.equals("TcpCommunicationSpi.comm.tcp.host.names", l.get(1)))
-            .collect(groupingBy(l -> l.get(0)));
+        Map<String, Map<String, Object>> attrsMap = new HashMap<>();
 
-        return offlineBaselineNodesId.stream()
-            .map(consistentId -> new OfflineNodeInfo(consistentId, offlineNodesHostnames.get(consistentId).get(0).get(0),
-                offlineNodesIps.get(consistentId).get(0).get(0)))
+        for (List<?> nodeAttr : allNodesAttrs) {
+            String consistentId = String.valueOf(nodeAttr.get(0));
+
+            if (offlineBaselineNodesId.contains(consistentId)) {
+                String attrName = String.valueOf(nodeAttr.get(1));
+                String attrVal = String.valueOf(nodeAttr.get(2));
+
+                if (attrsFilter.contains(attrName))
+                    attrsMap.compute(consistentId, (c, m) -> append(m, attrName, attrVal));
+            }
+        }
+
+        return attrsMap.entrySet()
+            .stream()
+            .map(e -> new OfflineNodeInfo(e.getKey(), e.getValue().get("org.apache.ignite.ips"),
+                e.getValue().get("TcpCommunicationSpi.comm.tcp.host.names")))
             .collect(Collectors.toSet());
+    }
+
+    private <K, V> Map<K, V> append(@Nullable Map<K, V> map, K k, V v) {
+        if (map == null) {
+            Map<K, V> map0 = new HashMap<>();
+            map0.put(k, v);
+
+            return map0;
+        }
+        else {
+            map.put(k, v);
+
+            return map;
+        }
     }
 
     private void mapServerNodesByType(Collection<ClusterNode> onlineBaselineNodes, Collection<OfflineNodeInfo> offlineBaselineNodes,

@@ -1,5 +1,7 @@
 package dev.ignitop.ignite;
 
+import java.util.Objects;
+
 public class OfflineNodeInfo {
     /** Consistent id. */
     private final Object consistentId;
@@ -35,5 +37,24 @@ public class OfflineNodeInfo {
      */
     public String addresses() {
         return addresses;
+    }
+
+    /** {@inheritDoc} */
+    @Override public boolean equals(Object o) {
+        if (this == o)
+            return true;
+
+        if (o == null || getClass() != o.getClass())
+            return false;
+
+        OfflineNodeInfo info = (OfflineNodeInfo)o;
+
+        return Objects.equals(consistentId, info.consistentId) && Objects.equals(hostNames, info.hostNames) &&
+            Objects.equals(addresses, info.addresses);
+    }
+
+    /** {@inheritDoc} */
+    @Override public int hashCode() {
+        return Objects.hash(consistentId, hostNames, addresses);
     }
 }

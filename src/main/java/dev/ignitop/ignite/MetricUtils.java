@@ -14,6 +14,7 @@ import org.apache.ignite.internal.visor.metric.VisorMetricTaskArg;
 import org.apache.ignite.internal.visor.systemview.VisorSystemViewTask;
 import org.apache.ignite.internal.visor.systemview.VisorSystemViewTaskArg;
 import org.apache.ignite.internal.visor.systemview.VisorSystemViewTaskResult;
+import org.jetbrains.annotations.Nullable;
 
 public final class MetricUtils {
     public static VisorSystemViewTaskResult view(IgniteClient client, String viewName) {
@@ -21,15 +22,11 @@ public final class MetricUtils {
     }
 
     public static VisorSystemViewTaskResult view(IgniteClient client, String viewName, Set<UUID> nodeIds) {
-        VisorSystemViewTaskArg sysViewArg = new VisorSystemViewTaskArg(viewName);
-        String clazz = VisorSystemViewTask.class.getName();
-
-        try {
-            return client.compute().execute(clazz, new VisorTaskArgument<>(allNodes(client), sysViewArg, false));
-        }
-        catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        return (VisorSystemViewTaskResult)executeTask(
+            client,
+            VisorSystemViewTask.class.getName(),
+            new VisorSystemViewTaskArg(viewName),
+            nodeIds);
     }
 
     public static List<List<?>> findFirstInView(IgniteClient client, String viewName) {
@@ -46,15 +43,19 @@ public final class MetricUtils {
     }
 
     public static Map<String, ?> metric(IgniteClient client, String metricName, Set<UUID> nodeIds) {
-        VisorMetricTaskArg taskArg = new VisorMetricTaskArg(metricName);
-        String clazz = VisorMetricTask.class.getName();
+        return (Map<String, ?>)executeTask(
+            client,
+            VisorMetricTask.class.getName(),
+            new VisorMetricTaskArg(metricName),
+            nodeIds);
+    }
 
-        try {
-            return client.compute().execute(clazz, taskArg);
-        }
-        catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+    @Nullable public static Object findFirstMetric(IgniteClient client, String metricName) {
+        return metric(client, metricName)
+            .values()
+            .stream()
+            .findFirst()
+            .orElse(null);
     }
 
     public static Set<UUID> allNodes(IgniteClient client) {
@@ -76,7 +77,17 @@ public final class MetricUtils {
         if (locNodes.size() == 1)
             return locNodes.get(0);
         else
-            throw new IllegalStateException("Client should be connected exactly one node, " +
+            throw new IllegalStateException("Client should be connected exactly to one node, " +
                 "but Cluster API returned invalid amount: " + locNodes.size());
+    }
+
+    private static Object executeTask(IgniteClient client, String taskClazz, Object arg,
+        Set<UUID> nodeIds) {
+        try {
+            return client.compute().execute(taskClazz, new VisorTaskArgument<>(nodeIds, arg, false));
+        }
+        catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
