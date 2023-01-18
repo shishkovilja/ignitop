@@ -12,6 +12,7 @@ public class OfflineNodeInfo {
     /** Addresses. */
     private final String addresses;
 
+    // TODO It seems, that we need extra constuctor with node attributes.
     public OfflineNodeInfo(Object consistentId, Object hostNames, Object addresses) {
         this.consistentId = consistentId;
         this.hostNames = String.valueOf(hostNames);

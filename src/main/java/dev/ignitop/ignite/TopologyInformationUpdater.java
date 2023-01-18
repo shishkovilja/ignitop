@@ -21,7 +21,8 @@ import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.cluster.ClusterNode;
 import org.jetbrains.annotations.Nullable;
 
-import static dev.ignitop.ignite.MetricUtils.findFirstInView;
+import static dev.ignitop.ignite.MetricUtils.metricValue;
+import static dev.ignitop.ignite.MetricUtils.viewOfRandomNode;
 
 /**
  *
@@ -65,9 +66,9 @@ public class TopologyInformationUpdater {
             .bold("[" + crd.consistentId() + ',' + crd.hostNames() + ']')
             .build());
 
-        Object clusterState = MetricUtils.findFirstMetric(client, "ignite.clusterState");
-        Object topVer = MetricUtils.findFirstMetric(client, "io.discovery.CurrentTopologyVersion");
-        Object rebalanced = MetricUtils.findFirstMetric(client, "cluster.Rebalanced");
+        Object clusterState = metricValue(client, "ignite.clusterState");
+        Object topVer = metricValue(client, "io.discovery.CurrentTopologyVersion");
+        Object rebalanced = metricValue(client, "cluster.Rebalanced");
 
         components.add(Label.normal("State:")
             .bold(clusterState)
@@ -93,7 +94,7 @@ public class TopologyInformationUpdater {
     // TODO: refactor boilerplate
     // TODO: fix incorrect info
     private Set<OfflineNodeInfo> offlineByConsistentIds(Collection<?> offlineBaselineNodesId) {
-        List<List<?>> allNodesAttrs = findFirstInView(client, "BASELINE_NODE_ATTRIBUTES");
+        List<List<?>> allNodesAttrs = viewOfRandomNode(client, "BASELINE_NODE_ATTRIBUTES");
 
         List<String> attrsFilter = List.of("org.apache.ignite.ips", "TcpCommunicationSpi.comm.tcp.host.names");
 
@@ -132,9 +133,10 @@ public class TopologyInformationUpdater {
         }
     }
 
-    private void mapServerNodesByType(Collection<ClusterNode> onlineBaselineNodes, Collection<OfflineNodeInfo> offlineBaselineNodes,
+    private void mapServerNodesByType(Collection<ClusterNode> onlineBaselineNodes,
+        Collection<OfflineNodeInfo> offlineBaselineNodes,
         Set<ClusterNode> otherServerNodes) {
-        List<List<?>> baselineNodesView = findFirstInView(client, "BASELINE_NODES");
+        List<List<?>> baselineNodesView = viewOfRandomNode(client, "BASELINE_NODES");
 
         Set<ClusterNode> nonHandledNodes = new HashSet<>(client.cluster().forServers().nodes());
 

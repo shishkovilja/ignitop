@@ -29,7 +29,7 @@ public final class MetricUtils {
             nodeIds);
     }
 
-    public static List<List<?>> findFirstInView(IgniteClient client, String viewName) {
+    public static List<List<?>> viewOfRandomNode(IgniteClient client, String viewName) {
         return view(client, viewName)
             .rows()
             .values()
@@ -50,7 +50,7 @@ public final class MetricUtils {
             nodeIds);
     }
 
-    @Nullable public static Object findFirstMetric(IgniteClient client, String metricName) {
+    @Nullable public static Object metricValue(IgniteClient client, String metricName) {
         return metric(client, metricName)
             .values()
             .stream()
