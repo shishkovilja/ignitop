@@ -73,31 +73,34 @@ public class Table implements TerminalComponent {
 
     /** {@inheritDoc} */
     @Override public void render(int width) {
-        int widthDelta = contentWidth - width;
+        int contentWidthDelta = contentWidth - width;
+
+        int remainingDelta = contentWidthDelta;
 
         for (int i = 0; i < columnWidths.size(); i++) {
-            int columnSizeDelta = widthDelta / (columnWidths.size() - i);
+            int oldWidth = columnWidths.get(i);
+
+            int columnSizeDelta = contentWidthDelta * oldWidth / contentWidth;
 
             if (columnSizeDelta == 0)
-                columnSizeDelta = widthDelta < 0 ? -1 : 1;
+                columnSizeDelta = contentWidthDelta < 0 ? -1 : 1;
 
-            int oldWidth = columnWidths.get(i);
 
             int newWidth = oldWidth - columnSizeDelta;
 
             if (newWidth < hdrWidths.get(i))
                 newWidth = hdrWidths.get(i);
 
-            widthDelta -= oldWidth - newWidth;
+            remainingDelta -= oldWidth - newWidth;
 
             columnWidths.set(i, newWidth);
         }
 
         // Expand or shrink last element
-        if (widthDelta != 0) {
+        if (remainingDelta != 0) {
             int lastIdx = columnWidths.size() - 1;
 
-            columnWidths.set(lastIdx, columnWidths.get(lastIdx) - widthDelta);
+            columnWidths.set(lastIdx, columnWidths.get(lastIdx) - remainingDelta);
         }
 
         String strFormat = columnWidths.stream()

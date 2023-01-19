@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.apache.ignite.client.ClientClusterGroup;
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.internal.visor.VisorTaskArgument;
@@ -95,6 +96,19 @@ public final class MetricUtils {
     }
 
     /**
+     * @param client Client.
+     * @param metricName Metric name.
+     * @param id Id.
+     */
+    @Nullable public static Object metricValue(IgniteClient client, String metricName, UUID id) {
+        return metric(client, metricName, Collections.singleton(id))
+            .values()
+            .stream()
+            .findFirst()
+            .orElse(null);
+    }
+
+    /**
      * Retrieve all cluster nodes.
      *
      * @param client Client.
@@ -135,7 +149,9 @@ public final class MetricUtils {
      */
     private static Object executeTask(IgniteClient client, String taskCls, Object arg, Set<UUID> nodeIds) {
         try {
-            return client.compute().execute(taskCls, new VisorTaskArgument<>(nodeIds, arg, false));
+            ClientClusterGroup clusterGrp = client.cluster().forNodeIds(nodeIds);
+
+            return client.compute(clusterGrp).execute(taskCls, new VisorTaskArgument<>(nodeIds, arg, false));
         }
         catch (InterruptedException e) {
             throw new RuntimeException(e);

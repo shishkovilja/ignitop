@@ -13,11 +13,16 @@ import dev.ignitop.ui.component.impl.Header;
 import dev.ignitop.ui.component.impl.Label;
 import dev.ignitop.ui.component.impl.Table;
 import dev.ignitop.ui.component.impl.Title;
+import org.apache.ignite.client.ClientCluster;
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.cluster.ClusterState;
 
 import static dev.ignitop.ignite.MetricUtils.groupServerNodesByState;
 import static dev.ignitop.ignite.MetricUtils.metricValue;
+import static org.apache.ignite.cluster.ClusterState.INACTIVE;
+import static org.fusesource.jansi.Ansi.Color.GREEN;
+import static org.fusesource.jansi.Ansi.Color.RED;
 
 /**
  *
@@ -52,7 +57,9 @@ public class TopologyInformationUpdater {
 
         components.add(new Title("Topology"));
 
-        ClusterNode crd = client.cluster().forOldest().node();
+        ClientCluster cluster = client.cluster();
+
+        ClusterNode crd = cluster.forOldest().node();
 
         components.add(Label.normal("Ignite version:")
             .bold(crd.version())
@@ -61,17 +68,19 @@ public class TopologyInformationUpdater {
             .bold("[" + crd.consistentId() + ',' + crd.hostNames() + ']')
             .build());
 
-        Object clusterState = metricValue(client, "ignite.clusterState");
+        ClusterState clusterState = cluster.state();
         Object topVer = metricValue(client, "io.discovery.CurrentTopologyVersion");
-        Object rebalanced = metricValue(client, "cluster.Rebalanced");
+        boolean rebalanced = (boolean)metricValue(client, "cluster.Rebalanced");
 
         components.add(Label.normal("State:")
+            .color(clusterState == INACTIVE ? RED : GREEN)
             .bold(clusterState)
             .spaces(2)
             .normal("Topology version:")
             .bold(topVer)
             .spaces(2)
             .normal("Rebalanced:")
+            .color(rebalanced ? GREEN : RED)
             .bold(rebalanced)
             .build());
 
@@ -80,7 +89,7 @@ public class TopologyInformationUpdater {
         addTable(components, "Online baseline nodes", nodesTable(onlineBaselineNodes));
         addTable(components, "Offline baseline nodes", offlineNodesTable(offlineBaselineNodes));
         addTable(components, "Other server nodes", nodesTable(otherServerNodes));
-        addTable(components, "Client nodes", nodesTable(client.cluster().forClients().nodes()));
+        addTable(components, "Client nodes", nodesTable(cluster.forClients().nodes()));
 
         ui.setComponents(components);
         ui.refresh();
@@ -103,13 +112,32 @@ public class TopologyInformationUpdater {
      * @param nodes Nodes.
      */
     private Table nodesTable(Collection<ClusterNode> nodes) {
-        List<String> hdr = List.of("Order", "Consistent ID", "Host names", "IP addresses");
+        List<String> hdr = List.of("Order", "Consistent ID", "Host names", "IP addresses", "Uptime");
 
         List<List<?>> rows = nodes.stream()
-            .map(n -> List.of(n.order(), n.consistentId(), n.hostNames(), n.addresses()))
+            .map(n -> List.of(
+                n.order(),
+                n.consistentId(),
+                n.hostNames(),
+                n.addresses(),
+                formattedUptime((long)metricValue(client, "sys.UpTime", n.id()))))
             .collect(Collectors.toList());
 
         return new Table(hdr, rows);
+    }
+
+    /**
+     * @param uptimeMillis Uptime millis.
+     */
+    private static String formattedUptime(long uptimeMillis) {
+        long totalSeconds = uptimeMillis / 1000;
+
+        long days = totalSeconds / (24 * 3600);
+        long hours = (totalSeconds / 3600)  % 24;
+        long minutes = (totalSeconds / 60) % 60;
+        long seconds = totalSeconds % 60;
+
+        return String.format("%dd %dh %dm %ds", days, hours, minutes, seconds);
     }
 
     /**
