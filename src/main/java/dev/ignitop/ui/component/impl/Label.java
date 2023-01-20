@@ -53,6 +53,15 @@ public class Label implements TerminalComponent {
         return new Builder().spaces(num);
     }
 
+    /**
+     * Apply color.
+     *
+     * @param color Color.
+     */
+    public static Builder color(Ansi.Color color) {
+        return new Builder().color(color);
+    }
+
     /** {@inheritDoc} */
     @Override public void render(int width) {
         System.out.println(text.length() > width ? text.substring(0, width) : text);
@@ -124,6 +133,13 @@ public class Label implements TerminalComponent {
                 empty = false;
 
             ansi.a(" ".repeat(num));
+
+            return this;
+        }
+
+        /** */
+        public Builder color(Ansi.Color color) {
+            ansi.fg(color);
 
             return this;
         }
