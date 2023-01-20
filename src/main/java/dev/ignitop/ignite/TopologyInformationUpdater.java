@@ -19,7 +19,7 @@ import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.cluster.ClusterState;
 
 import static dev.ignitop.ignite.MetricUtils.groupServerNodesByState;
-import static dev.ignitop.ignite.MetricUtils.metricValue;
+import static dev.ignitop.ignite.MetricUtils.singleMetric;
 import static org.apache.ignite.cluster.ClusterState.INACTIVE;
 import static org.fusesource.jansi.Ansi.Color.GREEN;
 import static org.fusesource.jansi.Ansi.Color.RED;
@@ -51,9 +51,9 @@ public class TopologyInformationUpdater {
 
         Set<ClusterNode> onlineBaselineNodes = new HashSet<>();
         Set<OfflineNodeInfo> offlineBaselineNodes = new HashSet<>();
-        Set<ClusterNode> otherServerNodes = new HashSet<>();
+        Set<ClusterNode> nonBaselineNodes = new HashSet<>();
 
-        groupServerNodesByState(client, onlineBaselineNodes, offlineBaselineNodes, otherServerNodes);
+        groupServerNodesByState(client, onlineBaselineNodes, offlineBaselineNodes, nonBaselineNodes);
 
         components.add(new Title("Topology"));
 
@@ -69,8 +69,10 @@ public class TopologyInformationUpdater {
             .build());
 
         ClusterState clusterState = cluster.state();
-        Object topVer = metricValue(client, "io.discovery.CurrentTopologyVersion");
-        boolean rebalanced = (boolean)metricValue(client, "cluster.Rebalanced");
+
+        long topVer = singleMetric(client, "io.discovery.CurrentTopologyVersion", crd.id(), Long.class, -1L);
+
+        boolean rebalanced = singleMetric(client, "cluster.Rebalanced", crd.id(), Boolean.class, false);
 
         components.add(Label.normal("State:")
             .color(clusterState == INACTIVE ? RED : GREEN)
@@ -88,7 +90,7 @@ public class TopologyInformationUpdater {
 
         addTable(components, "Online baseline nodes", nodesTable(onlineBaselineNodes));
         addTable(components, "Offline baseline nodes", offlineNodesTable(offlineBaselineNodes));
-        addTable(components, "Other server nodes", nodesTable(otherServerNodes));
+        addTable(components, "Non-baseline server nodes", nodesTable(nonBaselineNodes));
         addTable(components, "Client nodes", nodesTable(cluster.forClients().nodes()));
 
         ui.setComponents(components);
@@ -120,7 +122,7 @@ public class TopologyInformationUpdater {
                 n.consistentId(),
                 n.hostNames(),
                 n.addresses(),
-                formattedUptime((long)metricValue(client, "sys.UpTime", n.id()))))
+                formattedUptime(singleMetric(client, "sys.UpTime", n.id(), Long.class, 0L))))
             .collect(Collectors.toList());
 
         return new Table(hdr, rows);

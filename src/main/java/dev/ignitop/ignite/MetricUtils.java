@@ -1,7 +1,6 @@
 package dev.ignitop.ignite;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -25,87 +24,76 @@ import org.jetbrains.annotations.Nullable;
  *
  */
 public final class MetricUtils {
-    /** Baseline node attributes system view name. */
-    public static final String BASELINE_NODE_ATTRIBUTES = "BASELINE_NODE_ATTRIBUTES";
+    /** Baseline node attributes system view. */
+    public static final String BASELINE_NODE_ATTRIBUTES_VIEW = "BASELINE_NODE_ATTRIBUTES";
+
+    /** Baseline nodes system view. */
+    public static final String BASELINE_NODES_VIEW = "BASELINE_NODES";
 
     /**
-     * @param client Client.
+     * Return result of {@link VisorSystemViewTask} execution for a node with a specified id.
+     * Expected, that ID is a value, which corresponds to a value returned by a {@link ClusterNode#id()}.
+     *
+     * @param client      Client.
      * @param sysViewName System view name.
+     * @param nodeId      Node Id.
      */
-    public static VisorSystemViewTaskResult view(IgniteClient client, String sysViewName) {
-        return view(client, sysViewName, Collections.singleton(connectedTo(client)));
+    public static List<List<?>> view(IgniteClient client, String sysViewName, UUID nodeId) {
+        return view(client, sysViewName, Set.of(nodeId))
+            .getOrDefault(nodeId, List.of());
     }
 
     /**
-     * @param client Client.
+     * Get full result of multi-node {@link VisorSystemViewTask} execution groupped by node identifiers.
+     *
+     * @param client      Client.
      * @param sysViewName System view name.
-     * @param nodeIds Node ids.
+     * @param nodeIds     Node ids.
      */
-    public static VisorSystemViewTaskResult view(IgniteClient client, String sysViewName, Set<UUID> nodeIds) {
-        return (VisorSystemViewTaskResult)executeTask(
+    public static Map<UUID, List<List<?>>> view(IgniteClient client, String sysViewName, Set<UUID> nodeIds) {
+        VisorSystemViewTaskResult res = (VisorSystemViewTaskResult)executeTask(
             client,
             VisorSystemViewTask.class.getName(),
             new VisorSystemViewTaskArg(sysViewName),
             nodeIds);
+
+        return res.rows();
     }
 
     /**
-     * @param client Client.
-     * @param sysViewName System view name.
-     */
-    public static List<List<?>> viewOfRandomNode(IgniteClient client, String sysViewName) {
-        return view(client, sysViewName)
-            .rows()
-            .values()
-            .stream()
-            .findFirst()
-            .orElse(Collections.emptyList());
-    }
-
-    /**
+     * Return result of single-node {@link VisorMetricTaskArg} execution for a node with a specified id.
+     * Expected, that ID is a value, which corresponds to a value returned by a {@link ClusterNode#id()}.
+     *
      * @param client Client.
      * @param metricName Metric name.
+     * @param nodeId Node id.
      */
-    public static Map<String, ?> metric(IgniteClient client, String metricName) {
-        return metric(client, metricName, Collections.singleton(connectedTo(client)));
-    }
-
-    /**
-     * @param client Client.
-     * @param metricName Metric name.
-     * @param nodeIds Node ids.
-     */
-    public static Map<String, ?> metric(IgniteClient client, String metricName, Set<UUID> nodeIds) {
+    public static Map<String, ?> metric(IgniteClient client, String metricName, UUID nodeId) {
         return (Map<String, ?>)executeTask(
             client,
             VisorMetricTask.class.getName(),
             new VisorMetricTaskArg(metricName),
-            nodeIds);
+            Set.of(nodeId));
     }
 
     /**
+     * Return first found entry for a specified metric name. Because {@link VisorMetricTaskArg} can return multiple
+     * values, it is excpected, that this method is called for a single-value metric (not whole metric registry).
+     *
      * @param client Client.
      * @param metricName Metric name.
+     * @param nodeId Node id.
+     * @param cls Class of a returned value.
+     * @param dflt Default value.
      */
-    @Nullable public static Object metricValue(IgniteClient client, String metricName) {
-        return metric(client, metricName)
+    public static <T> T singleMetric(IgniteClient client, String metricName, UUID nodeId, Class<T> cls,
+        T dflt) {
+        return metric(client, metricName, nodeId)
             .values()
             .stream()
+            .map(obj -> (T)obj)
             .findFirst()
-            .orElse(null);
-    }
-
-    /**
-     * @param client Client.
-     * @param metricName Metric name.
-     * @param id Id.
-     */
-    @Nullable public static Object metricValue(IgniteClient client, String metricName, UUID id) {
-        return metric(client, metricName, Collections.singleton(id))
-            .values()
-            .stream()
-            .findFirst()
-            .orElse(null);
+            .orElse(dflt);
     }
 
     /**
@@ -167,7 +155,7 @@ public final class MetricUtils {
      */
     public static Map<String, Map<String, Object>> baselineNodesAttributes(IgniteClient client,
         Collection<?> consistentIds, String... attrs) {
-        List<List<?>> allNodesAttrs = viewOfRandomNode(client, BASELINE_NODE_ATTRIBUTES);
+        List<List<?>> allNodesAttrs = view(client, BASELINE_NODE_ATTRIBUTES_VIEW, connectedTo(client));
 
         List<String> attrsList = List.of(attrs);
 
@@ -184,6 +172,7 @@ public final class MetricUtils {
                     attrsMap.compute(consistentId, (c, m) -> append(m, attrName, attrVal));
             }
         }
+
         return attrsMap;
     }
 
@@ -213,11 +202,11 @@ public final class MetricUtils {
      * @param client Client.
      * @param onlineBaselineNodes Online baseline nodes.
      * @param offlineBaselineNodes Offline baseline nodes.
-     * @param otherServerNodes Other server nodes.
+     * @param nonBaselineNodes Server nodes outside of baseline.
      */
     public static void groupServerNodesByState(IgniteClient client, Collection<ClusterNode> onlineBaselineNodes,
-        Collection<OfflineNodeInfo> offlineBaselineNodes, Set<ClusterNode> otherServerNodes) {
-        List<List<?>> baselineNodesView = viewOfRandomNode(client, "BASELINE_NODES");
+        Collection<OfflineNodeInfo> offlineBaselineNodes, Set<ClusterNode> nonBaselineNodes) {
+        List<List<?>> baselineNodesView = view(client, BASELINE_NODES_VIEW, connectedTo(client));
 
         Set<ClusterNode> nonHandledNodes = new HashSet<>(client.cluster().forServers().nodes());
 
@@ -242,7 +231,7 @@ public final class MetricUtils {
 
         offlineBaselineNodes.addAll(offlineByConsistentIds(client, offlineConsistentIds));
 
-        otherServerNodes.addAll(nonHandledNodes);
+        nonBaselineNodes.addAll(nonHandledNodes);
     }
 
     /**
