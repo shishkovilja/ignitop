@@ -59,6 +59,7 @@ public class TopologyInformationUpdater {
 
         ClientCluster cluster = client.cluster();
 
+        // TODO: Is an oldest a coordinator?
         ClusterNode crd = cluster.forOldest().node();
 
         components.add(Label.normal("Ignite version:")
