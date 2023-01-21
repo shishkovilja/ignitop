@@ -134,9 +134,7 @@ public final class MetricUtils {
      */
     public static Map<String, Map<String, Object>> baselineNodesAttributes(IgniteClient client,
         Collection<?> consistentIds, String... attrs) {
-        UUID oldestId = client.cluster().forOldest().node().id();
-
-        List<List<?>> allNodesAttrs = view(client, BASELINE_NODE_ATTRIBUTES_VIEW, oldestId);
+        List<List<?>> allNodesAttrs = view(client, BASELINE_NODE_ATTRIBUTES_VIEW, client.cluster().node().id());
 
         List<String> attrsList = List.of(attrs);
 
@@ -156,7 +154,6 @@ public final class MetricUtils {
 
         return attrsMap;
     }
-
 
     /**
      * @param map Map.
@@ -187,11 +184,10 @@ public final class MetricUtils {
      */
     public static void groupServerNodesByState(IgniteClient client, Collection<ClusterNode> onlineBaselineNodes,
         Collection<OfflineNodeInfo> offlineBaselineNodes, Set<ClusterNode> nonBaselineNodes) {
-        UUID oldestId = client.cluster().forOldest().node().id();
 
-        List<List<?>> baselineNodesView = view(client, BASELINE_NODES_VIEW, oldestId);
+        List<List<?>> baselineNodesView = view(client, BASELINE_NODES_VIEW, client.cluster().node().id());
 
-        Set<ClusterNode> nonHandledNodes = new HashSet<>(client.cluster().forServers().nodes());
+        Set<ClusterNode> nonHandledNodes = new HashSet<>(client.cluster().nodes());
 
         Set<Object> offlineConsistentIds = new HashSet<>();
 
