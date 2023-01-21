@@ -1,7 +1,10 @@
-package dev.ignitop.ignite;
+package dev.ignitop.ignite.topology;
 
 import java.util.Objects;
 
+/**
+ *
+ */
 public class OfflineNodeInfo {
     /** Consistent id. */
     private final Object consistentId;
@@ -12,6 +15,11 @@ public class OfflineNodeInfo {
     /** Addresses. */
     private final String addresses;
 
+    /**
+     * @param consistentId Consistent id.
+     * @param hostNames Host names.
+     * @param addresses Addresses.
+     */
     // TODO It seems, that we need extra constuctor with node attributes.
     public OfflineNodeInfo(Object consistentId, Object hostNames, Object addresses) {
         this.consistentId = consistentId;

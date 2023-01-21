@@ -1,21 +1,22 @@
 package dev.ignitop.ui;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
+import java.util.concurrent.atomic.AtomicReference;
 import dev.ignitop.ui.component.TerminalComponent;
+import dev.ignitop.ui.updater.ScreenUpdater;
 
 /**
  *
  */
-public class TerminalUI {
+public class TerminalUi {
     /** Size of a component, which take up whole line. */
     public static final int WHOLE_LINE = -1;
 
     /** Terminal. */
     private final Terminal terminal;
 
-    /** Components. */
-    private List<TerminalComponent> components;
+    /** Current screen updater. */
+    private final AtomicReference<ScreenUpdater> updaterRef = new AtomicReference<>();
 
     /** UI width. */
     private int width;
@@ -23,24 +24,17 @@ public class TerminalUI {
     /**
      * @param terminal Terminal.
      */
-    public TerminalUI(Terminal terminal) {
+    public TerminalUi(Terminal terminal) {
         this.terminal = terminal;
 
         width = terminal.width();
     }
 
     /**
-     * @param components Components.
-     */
-    public void setComponents(List<TerminalComponent> components) {
-        this.components = new ArrayList<>(components);
-    }
-
-    /**
      *
      */
     public void refresh() {
-        terminal.eraseScreen();
+        Collection<TerminalComponent> components = updaterRef.get().components();
 
         width = terminal.width();
 
@@ -48,6 +42,8 @@ public class TerminalUI {
             .mapToInt(TerminalComponent::contentWidth)
             .max()
             .orElse(width);
+
+        terminal.eraseScreen();
 
         for (TerminalComponent component : components)
             component.render(Math.min(maxComponentWidth, width));
@@ -58,5 +54,12 @@ public class TerminalUI {
      */
     public boolean resized() {
         return width != terminal.width();
+    }
+
+    /**
+     * @param updater New current screen updater.
+     */
+    public void updater(ScreenUpdater updater) {
+        updaterRef.set(updater);
     }
 }

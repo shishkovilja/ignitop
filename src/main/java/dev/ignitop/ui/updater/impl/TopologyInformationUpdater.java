@@ -1,25 +1,22 @@
-package dev.ignitop.ignite;
+package dev.ignitop.ui.updater.impl;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
-import dev.ignitop.ui.TerminalUI;
+import dev.ignitop.ignite.IgniteManager;
+import dev.ignitop.ignite.topology.OfflineNodeInfo;
+import dev.ignitop.ignite.topology.OnlineNodeInfo;
+import dev.ignitop.ignite.topology.TopologyInformation;
 import dev.ignitop.ui.component.TerminalComponent;
 import dev.ignitop.ui.component.impl.EmptySpace;
 import dev.ignitop.ui.component.impl.Header;
 import dev.ignitop.ui.component.impl.Label;
 import dev.ignitop.ui.component.impl.Table;
 import dev.ignitop.ui.component.impl.Title;
-import org.apache.ignite.client.ClientCluster;
-import org.apache.ignite.client.IgniteClient;
-import org.apache.ignite.cluster.ClusterNode;
-import org.apache.ignite.cluster.ClusterState;
+import dev.ignitop.ui.updater.ScreenUpdater;
 
-import static dev.ignitop.ignite.MetricUtils.groupServerNodesByState;
-import static dev.ignitop.ignite.MetricUtils.singleMetric;
 import static org.apache.ignite.cluster.ClusterState.INACTIVE;
 import static org.fusesource.jansi.Ansi.Color.GREEN;
 import static org.fusesource.jansi.Ansi.Color.RED;
@@ -27,75 +24,52 @@ import static org.fusesource.jansi.Ansi.Color.RED;
 /**
  *
  */
-public class TopologyInformationUpdater {
-    /** Client. */
-    private final IgniteClient client;
-
-    /** User interface. */
-    private final TerminalUI ui;
+public class TopologyInformationUpdater implements ScreenUpdater {
+    /** Ignite manager. */
+    private final IgniteManager igniteMgr;
 
     /**
-     * @param client Client.
+     * @param igniteMgr Ignite manager.
      */
-    public TopologyInformationUpdater(IgniteClient client, TerminalUI ui) {
-        this.client = client;
-        this.ui = ui;
+    public TopologyInformationUpdater(IgniteManager igniteMgr) {
+        this.igniteMgr = igniteMgr;
     }
 
-    /**
-     *
-     */
-    //TODO: It is not correct place for body, see: https://github.com/shishkovilja/ignitop/issues/25
-    public void body() {
+    /** {@inheritDoc} */
+    @Override public Collection<TerminalComponent> components() {
         ArrayList<TerminalComponent> components = new ArrayList<>();
 
-        Set<ClusterNode> onlineBaselineNodes = new HashSet<>();
-        Set<OfflineNodeInfo> offlineBaselineNodes = new HashSet<>();
-        Set<ClusterNode> nonBaselineNodes = new HashSet<>();
-
-        groupServerNodesByState(client, onlineBaselineNodes, offlineBaselineNodes, nonBaselineNodes);
+        TopologyInformation topInfo = igniteMgr.topologyInformation();
 
         components.add(new Title("Topology"));
 
-        ClientCluster cluster = client.cluster();
-
-        // TODO: Is an oldest a coordinator?
-        ClusterNode crd = cluster.forOldest().node();
-
         components.add(Label.normal("Ignite version:")
-            .bold(crd.version())
+            .bold(topInfo.coordinator().igniteVersion())
             .spaces(2)
             .normal("Coordinator:")
-            .bold("[" + crd.consistentId() + ',' + crd.hostNames() + ']')
+            .bold("[" + topInfo.coordinator().consistentId() + ',' + topInfo.coordinator().hostNames() + ']')
             .build());
 
-        ClusterState clusterState = cluster.state();
-
-        long topVer = singleMetric(client, "io.discovery.CurrentTopologyVersion", crd.id(), Long.class, -1L);
-
-        boolean rebalanced = singleMetric(client, "cluster.Rebalanced", crd.id(), Boolean.class, false);
-
         components.add(Label.normal("State:")
-            .color(clusterState == INACTIVE ? RED : GREEN)
-            .bold(clusterState)
+            .color(topInfo.clusterState() == INACTIVE ? RED : GREEN)
+            .bold(topInfo.clusterState())
             .spaces(2)
             .normal("Topology version:")
-            .bold(topVer)
+            .bold(topInfo.topologyVersion())
             .spaces(2)
             .normal("Rebalanced:")
-            .color(rebalanced ? GREEN : RED)
-            .bold(rebalanced)
+            .color(topInfo.rebalanced() ? GREEN : RED)
+            .bold(topInfo.rebalanced())
             .build());
 
         components.add(new EmptySpace(2));
 
-        addTable(components, "Online baseline nodes", nodesTable(onlineBaselineNodes));
-        addTable(components, "Offline baseline nodes", offlineNodesTable(offlineBaselineNodes));
-        addTable(components, "Non-baseline server nodes", nodesTable(nonBaselineNodes));
-        addTable(components, "Client nodes", nodesTable(cluster.forClients().nodes()));
+        addTable(components, "Online baseline nodes", nodesTable(topInfo.onlineBaselineNodes()));
+        addTable(components, "Offline baseline nodes", offlineNodesTable(topInfo.offlineBaselineNodes()));
+        addTable(components, "Non-baseline server nodes", nodesTable(topInfo.nonBaselineNodes()));
+        addTable(components, "Client nodes", nodesTable(topInfo.clientNodes()));
 
-        ui.setComponents(components);
-        ui.refresh();
+        return Collections.unmodifiableList(components);
     }
 
     /**
@@ -114,7 +88,7 @@ public class TopologyInformationUpdater {
     /**
      * @param nodes Nodes.
      */
-    private Table nodesTable(Collection<ClusterNode> nodes) {
+    private Table nodesTable(Collection<OnlineNodeInfo> nodes) {
         List<String> hdr = List.of("Order", "Consistent ID", "Host names", "IP addresses", "Uptime");
 
         List<List<?>> rows = nodes.stream()
@@ -123,7 +97,7 @@ public class TopologyInformationUpdater {
                 n.consistentId(),
                 n.hostNames(),
                 n.addresses(),
-                formattedUptime(singleMetric(client, "sys.UpTime", n.id(), Long.class, 0L))))
+                formattedUptime(n.upTime())))
             .collect(Collectors.toList());
 
         return new Table(hdr, rows);

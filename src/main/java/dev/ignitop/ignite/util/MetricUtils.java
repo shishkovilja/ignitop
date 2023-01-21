@@ -1,4 +1,4 @@
-package dev.ignitop.ignite;
+package dev.ignitop.ignite.util;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -9,6 +9,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import dev.ignitop.ignite.topology.OfflineNodeInfo;
+import dev.ignitop.ignite.topology.OnlineNodeInfo;
 import org.apache.ignite.client.ClientClusterGroup;
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.cluster.ClusterNode;
@@ -23,12 +25,19 @@ import org.jetbrains.annotations.Nullable;
 /**
  *
  */
+// TODO refactor to instance with client field -> remove clinet argumet from all methods.
 public final class MetricUtils {
     /** Baseline node attributes system view. */
     public static final String BASELINE_NODE_ATTRIBUTES_VIEW = "BASELINE_NODE_ATTRIBUTES";
 
     /** Baseline nodes system view. */
     public static final String BASELINE_NODES_VIEW = "BASELINE_NODES";
+
+    /** Topology version metric. */
+    public static final String TOPOLOGY_VERSION_METRIC = "io.discovery.CurrentTopologyVersion";
+
+    /** Rebalanced metric. */
+    public static final String REBALANCED_METRIC = "cluster.Rebalanced";
 
     /**
      * Return result of {@link VisorSystemViewTask} execution for a node with a specified id.
@@ -182,8 +191,8 @@ public final class MetricUtils {
      * @param offlineBaselineNodes Offline baseline nodes.
      * @param nonBaselineNodes Server nodes outside of baseline.
      */
-    public static void groupServerNodesByState(IgniteClient client, Collection<ClusterNode> onlineBaselineNodes,
-        Collection<OfflineNodeInfo> offlineBaselineNodes, Set<ClusterNode> nonBaselineNodes) {
+    public static void groupServerNodesByState(IgniteClient client, Collection<OnlineNodeInfo> onlineBaselineNodes,
+        Collection<OfflineNodeInfo> offlineBaselineNodes, Set<OnlineNodeInfo> nonBaselineNodes) {
 
         List<List<?>> baselineNodesView = view(client, BASELINE_NODES_VIEW, client.cluster().node().id());
 
@@ -200,7 +209,7 @@ public final class MetricUtils {
                 .findFirst();
 
             if (nodeOpt.isPresent() && online) {
-                onlineBaselineNodes.add(nodeOpt.get());
+                onlineBaselineNodes.add(toNodeInfo(client, nodeOpt.get()));
 
                 nonHandledNodes.remove(nodeOpt.get());
             }
@@ -210,7 +219,19 @@ public final class MetricUtils {
 
         offlineBaselineNodes.addAll(offlineByConsistentIds(client, offlineConsistentIds));
 
-        nonBaselineNodes.addAll(nonHandledNodes);
+        nonBaselineNodes.addAll(nonHandledNodes.stream()
+            .map(n -> toNodeInfo(client, n))
+            .collect(Collectors.toSet()));
+    }
+
+    /**
+     * @param client Client.
+     * @param node Node.
+     */
+    public static OnlineNodeInfo toNodeInfo(IgniteClient client, ClusterNode node) {
+        return new OnlineNodeInfo(
+            node,
+            singleMetric(client, "sys.UpTime", node.id(), Long.class, -1L));
     }
 
     /**
