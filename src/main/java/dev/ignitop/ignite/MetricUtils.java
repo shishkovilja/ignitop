@@ -86,8 +86,7 @@ public final class MetricUtils {
      * @param cls Class of a returned value.
      * @param dflt Default value.
      */
-    public static <T> T singleMetric(IgniteClient client, String metricName, UUID nodeId, Class<T> cls,
-        T dflt) {
+    public static <T> T singleMetric(IgniteClient client, String metricName, UUID nodeId, Class<T> cls, T dflt) {
         return metric(client, metricName, nodeId)
             .values()
             .stream()
@@ -107,26 +106,6 @@ public final class MetricUtils {
             .stream()
             .map(ClusterNode::id)
             .collect(Collectors.toSet());
-    }
-
-    /**
-     * Retrieve node which client is connected to.
-     *
-     * @param client Client.
-     */
-    public static UUID connectedTo(IgniteClient client) {
-        List<UUID> locNodes = client.cluster()
-            .nodes()
-            .stream()
-            .filter(ClusterNode::isLocal)
-            .map(ClusterNode::id)
-            .collect(Collectors.toList());
-
-        if (locNodes.size() == 1)
-            return locNodes.get(0);
-        else
-            throw new IllegalStateException("Client should be connected exactly to one node, " +
-                "but Cluster API returned invalid amount: " + locNodes.size());
     }
 
     /**
@@ -155,7 +134,9 @@ public final class MetricUtils {
      */
     public static Map<String, Map<String, Object>> baselineNodesAttributes(IgniteClient client,
         Collection<?> consistentIds, String... attrs) {
-        List<List<?>> allNodesAttrs = view(client, BASELINE_NODE_ATTRIBUTES_VIEW, connectedTo(client));
+        UUID oldestId = client.cluster().forOldest().node().id();
+
+        List<List<?>> allNodesAttrs = view(client, BASELINE_NODE_ATTRIBUTES_VIEW, oldestId);
 
         List<String> attrsList = List.of(attrs);
 
@@ -206,7 +187,9 @@ public final class MetricUtils {
      */
     public static void groupServerNodesByState(IgniteClient client, Collection<ClusterNode> onlineBaselineNodes,
         Collection<OfflineNodeInfo> offlineBaselineNodes, Set<ClusterNode> nonBaselineNodes) {
-        List<List<?>> baselineNodesView = view(client, BASELINE_NODES_VIEW, connectedTo(client));
+        UUID oldestId = client.cluster().forOldest().node().id();
+
+        List<List<?>> baselineNodesView = view(client, BASELINE_NODES_VIEW, oldestId);
 
         Set<ClusterNode> nonHandledNodes = new HashSet<>(client.cluster().forServers().nodes());
 
