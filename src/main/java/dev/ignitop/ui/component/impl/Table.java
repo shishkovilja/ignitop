@@ -1,5 +1,6 @@
 package dev.ignitop.ui.component.impl;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -72,7 +73,7 @@ public class Table implements TerminalComponent {
     }
 
     /** {@inheritDoc} */
-    @Override public void render(int width) {
+    @Override public void render(int width, PrintStream out) {
         int contentWidthDelta = contentWidth - width;
 
         int remainingDelta = contentWidthDelta;
@@ -107,14 +108,14 @@ public class Table implements TerminalComponent {
             .map(l -> "%-" + l + '.' + (l - CELLS_GAP) + 's')
             .collect(Collectors.joining());
 
-        printHeader(strFormat, hdr.toArray());
+        printHeader(strFormat, out, hdr.toArray());
 
         for (List<?> row : rows) {
-            System.out.printf(strFormat, row.toArray());
-            System.out.println();
+            out.printf(strFormat, row.toArray());
+            out.println();
         }
 
-        System.out.println("Total items: " + rows.size());
+        out.println("Total items: " + rows.size());
     }
 
     /** {@inheritDoc} */
@@ -124,9 +125,10 @@ public class Table implements TerminalComponent {
 
     /**
      * @param format Format.
+     * @param out Output stream.
      * @param columnNames Column names.
      */
-    private void printHeader(String format, Object... columnNames) {
+    private void printHeader(String format, PrintStream out, Object... columnNames) {
         String hdrFmtStr = ansi()
             .fgBlack()
             .bg(Ansi.Color.GREEN)
@@ -134,7 +136,7 @@ public class Table implements TerminalComponent {
             .reset()
             .toString();
 
-        System.out.printf(hdrFmtStr, columnNames);
-        System.out.println();
+        out.printf(hdrFmtStr, columnNames);
+        out.println();
     }
 }

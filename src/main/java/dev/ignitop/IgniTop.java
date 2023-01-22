@@ -6,12 +6,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import dev.ignitop.ignite.IgniteManager;
 import dev.ignitop.ui.Terminal;
-import dev.ignitop.ui.TerminalUI;
-import org.apache.ignite.Ignition;
-import org.apache.ignite.client.IgniteClient;
-import org.apache.ignite.configuration.ClientConfiguration;
-import dev.ignitop.ignite.TopologyInformationUpdater;
+import dev.ignitop.ui.TerminalUi;
+import dev.ignitop.ui.updater.impl.TopologyInformationUpdater;
 
 /**
  *
@@ -39,11 +37,11 @@ public class IgniTop {
 
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 
-        try (Terminal terminal = new Terminal();
-             IgniteClient client = Ignition.startClient(new ClientConfiguration().setAddresses(addrs))) {
-            TopologyInformationUpdater topUpdater = new TopologyInformationUpdater(client, new TerminalUI(terminal));
+        try (Terminal terminal = new Terminal(); IgniteManager igniteMgr = new IgniteManager(addrs)) {
+            TerminalUi terminalUi = new TerminalUi(terminal);
+            terminalUi.updater(new TopologyInformationUpdater(igniteMgr));
 
-            ScheduledFuture<?> fut = executor.scheduleAtFixedRate(topUpdater::body, 0, DEFAULT_UPDATE_INTERVAL,
+            ScheduledFuture<?> fut = executor.scheduleAtFixedRate(terminalUi::refresh, 0, DEFAULT_UPDATE_INTERVAL,
                 TimeUnit.SECONDS);
 
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {

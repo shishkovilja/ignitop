@@ -1,4 +1,4 @@
-package dev.ignitop.util;
+package dev.ignitop.ignite.util;
 
 import java.util.ArrayList;
 import java.util.Collections;

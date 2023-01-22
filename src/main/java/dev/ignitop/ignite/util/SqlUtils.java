@@ -1,15 +1,14 @@
-package dev.ignitop.ignite;
+package dev.ignitop.ignite.util;
 
 import java.util.List;
 import org.apache.ignite.cache.query.FieldsQueryCursor;
 import org.apache.ignite.cache.query.SqlFieldsQuery;
 import org.apache.ignite.client.IgniteClient;
-import dev.ignitop.util.QueryResult;
 
 /**
  *
  */
-public final class SqlQueries {
+public final class SqlUtils {
     /** Cluster summary. */
     public static final String CLUSTER_SUMMARY = "select NAME, VALUE from SYS.METRICS " +
         "where name like 'cluster.%'";

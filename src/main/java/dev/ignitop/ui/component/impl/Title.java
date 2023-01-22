@@ -1,5 +1,6 @@
 package dev.ignitop.ui.component.impl;
 
+import java.io.PrintStream;
 import dev.ignitop.ui.component.TerminalComponent;
 import org.fusesource.jansi.Ansi;
 
@@ -20,7 +21,7 @@ public class Title implements TerminalComponent {
     }
 
     /** {@inheritDoc} */
-    @Override public void render(int width) {
+    @Override public void render(int width, PrintStream out) {
         String text0 = leftBracket() + text + rightBracket();
 
         int delta = Math.max(0, width - text0.length());
@@ -31,7 +32,7 @@ public class Title implements TerminalComponent {
         int leftMarginSize = delta / 2;
         int rigthMarginSize = Math.max(0, width - leftMarginSize - text0.length());
 
-        System.out.println(ansi()
+        out.println(ansi()
             .fg(fg())
             .bg(bg())
             .a(margin().repeat(leftMarginSize))
