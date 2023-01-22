@@ -82,14 +82,16 @@ public class Label implements TerminalComponent {
         private final Ansi ansi = Ansi.ansi();
 
         /** Emptiness marker. */
-        private boolean empty = true;
+        private boolean needSpace;
 
         /** */
         private void addWhitespaceIfNecessary() {
-            if (!empty)
+            if (needSpace) {
                 ansi.a(' ');
-            else
-                empty = false;
+
+                needSpace = false;
+            } else
+                needSpace = true;
         }
 
         /** */
@@ -102,8 +104,8 @@ public class Label implements TerminalComponent {
             addWhitespaceIfNecessary();
 
             ansi.bold()
-                .a(obj.toString())
-                .reset();
+                .a(String.valueOf(obj))
+                .boldOff();
 
             return this;
         }
@@ -112,7 +114,7 @@ public class Label implements TerminalComponent {
         public Builder normal(Object obj) {
             addWhitespaceIfNecessary();
 
-            ansi.a(obj.toString());
+            ansi.a(String.valueOf(obj));
 
             return this;
         }
@@ -122,24 +124,27 @@ public class Label implements TerminalComponent {
             addWhitespaceIfNecessary();
 
             ansi.a(Ansi.Attribute.UNDERLINE)
-                .a(obj.toString())
-                .reset();
+                .a(String.valueOf(obj))
+                .a(Ansi.Attribute.UNDERLINE_OFF);
 
             return this;
         }
 
         /** */
         public Builder spaces(int num) {
-            if (empty)
-                empty = false;
-
             ansi.a(" ".repeat(num));
+
+            needSpace = false;
 
             return this;
         }
 
         /** */
         public Builder color(Ansi.Color color) {
+            addWhitespaceIfNecessary();
+
+            needSpace = false;
+
             ansi.fg(color);
 
             return this;
