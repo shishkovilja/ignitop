@@ -11,6 +11,26 @@
   <name>ignitop</name>
   <url>https://github.com/shishkovilja/ignitop</url>
 
+  <licenses>
+    <license>
+      <name>Apache-2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>manual</distribution>
+      <comments>A business-friendly OSS license</comments>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>shishkovilja</id>
+      <name>Ilya Shishkov</name>
+      <email>shishkovilja@gmail.com</email>
+      <roles>
+        <role>author</role>
+      </roles>
+    </developer>
+  </developers>
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>11</maven.compiler.source>
