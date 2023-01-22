@@ -46,7 +46,7 @@ public class TerminalUi {
         terminal.eraseScreen();
 
         for (TerminalComponent component : components)
-            component.render(Math.min(maxComponentWidth, width));
+            component.render(Math.min(maxComponentWidth, width), terminal.out());
     }
 
     /**

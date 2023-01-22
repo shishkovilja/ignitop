@@ -1,5 +1,6 @@
 package dev.ignitop.ui.component.impl;
 
+import java.io.PrintStream;
 import dev.ignitop.ui.component.TerminalComponent;
 import org.fusesource.jansi.Ansi;
 
@@ -63,8 +64,8 @@ public class Label implements TerminalComponent {
     }
 
     /** {@inheritDoc} */
-    @Override public void render(int width) {
-        System.out.println(text.length() > width ? text.substring(0, width) : text);
+    @Override public void render(int width, PrintStream out) {
+        out.println(text.length() > width ? text.substring(0, width) : text);
     }
 
     /** {@inheritDoc} */

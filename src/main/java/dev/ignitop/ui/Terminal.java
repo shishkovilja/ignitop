@@ -1,5 +1,6 @@
 package dev.ignitop.ui;
 
+import java.io.PrintStream;
 import org.fusesource.jansi.AnsiConsole;
 
 import static java.lang.System.out;
@@ -12,17 +13,12 @@ public class Terminal implements AutoCloseable {
     public static final int DEFAULT_TERMINAL_WIDTH = 80;
 
     /** Closed state marker. */
-    private boolean closed;
+    private volatile boolean closed;
 
     /**
      * Default constructor.
      */
     public Terminal() {
-    // TODO: How we should handle null console?
-    //    if (System.console() == null)
-    //        throw new IllegalStateException("No suitable instance of console found. Windows command line or " +
-    //            "linux terminal application must be user in order to run IgniTop.");
-
         enterPrivateMode();
     }
 
@@ -76,15 +72,6 @@ public class Terminal implements AutoCloseable {
         out.flush();
     }
 
-    /** {@inheritDoc} */
-    @Override public void close() {
-        if (!closed) {
-            exitPrivateMode();
-
-            closed = true;
-        }
-    }
-
     /**
      *
      */
@@ -92,5 +79,21 @@ public class Terminal implements AutoCloseable {
         int width = AnsiConsole.getTerminalWidth();
 
         return width > 0 ? width : DEFAULT_TERMINAL_WIDTH;
+    }
+
+    /**
+     *
+     */
+    public PrintStream out() {
+        return out;
+    }
+
+    /** {@inheritDoc} */
+    @Override public void close() {
+        if (!closed) {
+            exitPrivateMode();
+
+            closed = true;
+        }
     }
 }
