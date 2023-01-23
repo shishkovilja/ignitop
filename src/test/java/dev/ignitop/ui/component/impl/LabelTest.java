@@ -1,21 +1,21 @@
 package dev.ignitop.ui.component.impl;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
 import java.util.function.Function;
+import dev.ignitop.util.TestUtils;
 import org.fusesource.jansi.Ansi;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import static dev.ignitop.ui.Terminal.DEFAULT_TERMINAL_WIDTH;
 import static java.lang.System.lineSeparator;
 import static org.fusesource.jansi.Ansi.Attribute.UNDERLINE;
 import static org.fusesource.jansi.Ansi.Attribute.UNDERLINE_OFF;
 import static org.fusesource.jansi.Ansi.Color.RED;
 import static org.fusesource.jansi.Ansi.ansi;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  *
@@ -39,7 +39,7 @@ class LabelTest {
      *
      */
     @Test
-    void singleBold() throws Exception {
+    void singleBold() {
         check(Label::bold, s -> ansi().bold().a(s).boldOff().reset());
     }
 
@@ -47,7 +47,7 @@ class LabelTest {
      *
      */
     @Test
-    void singleNormal() throws Exception {
+    void singleNormal() {
         check(Label::normal, s -> ansi().a(s).reset());
     }
 
@@ -55,7 +55,7 @@ class LabelTest {
      *
      */
     @Test
-    void singleUnderline() throws Exception {
+    void singleUnderline() {
         check(Label::underline, s -> ansi().a(UNDERLINE).a(s).a(UNDERLINE_OFF).reset());
     }
 
@@ -63,7 +63,7 @@ class LabelTest {
      *
      */
     @Test
-    void singleSpaces() throws Exception {
+    void singleSpaces() {
         check(s -> Label.spaces(3), s -> ansi().a("   ").reset());
     }
 
@@ -71,7 +71,7 @@ class LabelTest {
      *
      */
     @Test
-    void singleColor() throws Exception {
+    void singleColor() {
         check(s -> Label.color(RED).normal(s), s -> ansi().fgRed().a(s).reset());
     }
 
@@ -79,7 +79,7 @@ class LabelTest {
      *
      */
     @Test
-    void multiple() throws IOException {
+    void multiple() {
         check(
             s -> Label.color(RED)
                 .normal(s)
@@ -109,8 +109,7 @@ class LabelTest {
      * @param lblBuilderFunc Label builder function.
      * @param ansiBuilderFunc Ansi builder function.
      */
-    private void check(Function<String, Label.Builder> lblBuilderFunc,
-        Function<String, Ansi> ansiBuilderFunc) throws IOException {
+    private void check(Function<String, Label.Builder> lblBuilderFunc, Function<String, Ansi> ansiBuilderFunc) {
         String text = "text";
 
         String expectedText = ansiBuilderFunc.apply(text).toString();
@@ -118,15 +117,7 @@ class LabelTest {
 
         String renderedText;
 
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            PrintStream out = new PrintStream(baos);
-
-            lbl.render(80, out);
-
-            out.flush();
-
-            renderedText = baos.toString();
-        }
+        renderedText = TestUtils.renderToString(lbl, DEFAULT_TERMINAL_WIDTH);
 
         assertEquals(expectedText + lineSeparator(), renderedText);
         assertEquals(expectedText.length(), lbl.contentWidth());
