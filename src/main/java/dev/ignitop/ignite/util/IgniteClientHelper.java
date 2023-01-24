@@ -11,9 +11,12 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import dev.ignitop.ignite.topology.OfflineNodeInfo;
 import dev.ignitop.ignite.topology.OnlineNodeInfo;
+import org.apache.ignite.Ignition;
 import org.apache.ignite.client.ClientClusterGroup;
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.cluster.ClusterState;
+import org.apache.ignite.configuration.ClientConfiguration;
 import org.apache.ignite.internal.visor.VisorTaskArgument;
 import org.apache.ignite.internal.visor.metric.VisorMetricTask;
 import org.apache.ignite.internal.visor.metric.VisorMetricTaskArg;
@@ -25,8 +28,7 @@ import org.jetbrains.annotations.Nullable;
 /**
  *
  */
-// TODO refactor to instance with client field -> remove clinet argumet from all methods.
-public final class MetricUtils {
+public final class IgniteClientHelper implements AutoCloseable {
     /** Baseline node attributes system view. */
     public static final String BASELINE_NODE_ATTRIBUTES_VIEW = "BASELINE_NODE_ATTRIBUTES";
 
@@ -39,64 +41,76 @@ public final class MetricUtils {
     /** Rebalanced metric. */
     public static final String REBALANCED_METRIC = "cluster.Rebalanced";
 
+    /** Client. */
+    private final IgniteClient client;
+
+    /**
+     * @param addresses Addresses.
+     */
+    public IgniteClientHelper(String... addresses) {
+        client = Ignition.startClient(new ClientConfiguration().setAddresses(addresses));
+    }
+
     /**
      * Return result of {@link VisorSystemViewTask} execution for a node with a specified id.
      * Expected, that ID is a value, which corresponds to a value returned by a {@link ClusterNode#id()}.
      *
-     * @param client      Client.
      * @param sysViewName System view name.
      * @param nodeId      Node Id.
      */
-    public static List<List<?>> view(IgniteClient client, String sysViewName, UUID nodeId) {
-        return view(client, sysViewName, Set.of(nodeId))
+    public List<List<?>> view(String sysViewName, UUID nodeId) {
+        return view(sysViewName, Set.of(nodeId))
             .getOrDefault(nodeId, List.of());
     }
 
     /**
      * Get full result of multi-node {@link VisorSystemViewTask} execution groupped by node identifiers.
      *
-     * @param client      Client.
      * @param sysViewName System view name.
      * @param nodeIds     Node ids.
      */
-    public static Map<UUID, List<List<?>>> view(IgniteClient client, String sysViewName, Set<UUID> nodeIds) {
+    public Map<UUID, List<List<?>>> view(String sysViewName, Set<UUID> nodeIds) {
+        Optional<UUID> randomNodeOpt = nodeIds.stream().findFirst();
+
+        if (randomNodeOpt.isEmpty())
+            return Map.of();
+
         VisorSystemViewTaskResult res = (VisorSystemViewTaskResult)executeTask(
-            client,
             VisorSystemViewTask.class.getName(),
             new VisorSystemViewTaskArg(sysViewName),
-            nodeIds);
+            randomNodeOpt.get());
 
-        return res.rows();
+        HashMap<UUID, List<List<?>>> map = new HashMap<>(res.rows());
+        map.keySet().retainAll(nodeIds);
+
+        return map;
     }
 
     /**
      * Return result of single-node {@link VisorMetricTaskArg} execution for a node with a specified id.
      * Expected, that ID is a value, which corresponds to a value returned by a {@link ClusterNode#id()}.
      *
-     * @param client Client.
      * @param metricName Metric name.
      * @param nodeId Node id.
      */
-    public static Map<String, ?> metric(IgniteClient client, String metricName, UUID nodeId) {
+    public Map<String, ?> metric(String metricName, UUID nodeId) {
         return (Map<String, ?>)executeTask(
-            client,
             VisorMetricTask.class.getName(),
             new VisorMetricTaskArg(metricName),
-            Set.of(nodeId));
+            nodeId);
     }
 
     /**
      * Return first found entry for a specified metric name. Because {@link VisorMetricTaskArg} can return multiple
      * values, it is excpected, that this method is called for a single-value metric (not whole metric registry).
      *
-     * @param client Client.
      * @param metricName Metric name.
      * @param nodeId Node id.
      * @param cls Class of a returned value.
      * @param dflt Default value.
      */
-    public static <T> T singleMetric(IgniteClient client, String metricName, UUID nodeId, Class<T> cls, T dflt) {
-        return metric(client, metricName, nodeId)
+    public <T> T singleMetric(String metricName, UUID nodeId, Class<T> cls, T dflt) {
+        return metric(metricName, nodeId)
             .values()
             .stream()
             .map(obj -> (T)obj)
@@ -105,29 +119,17 @@ public final class MetricUtils {
     }
 
     /**
-     * Retrieve all cluster nodes.
+     * Execute task on a single node.
      *
-     * @param client Client.
-     */
-    public static Set<UUID> allNodes(IgniteClient client) {
-        return client.cluster()
-            .nodes()
-            .stream()
-            .map(ClusterNode::id)
-            .collect(Collectors.toSet());
-    }
-
-    /**
-     * @param client Client.
      * @param taskCls Task class.
      * @param arg Argument.
-     * @param nodeIds Node ids.
+     * @param nodeId Node id.
      */
-    private static Object executeTask(IgniteClient client, String taskCls, Object arg, Set<UUID> nodeIds) {
+    private Object executeTask(String taskCls, Object arg, UUID nodeId) {
         try {
-            ClientClusterGroup clusterGrp = client.cluster().forNodeIds(nodeIds);
+            ClientClusterGroup clusterGrp = client.cluster().forNodeId(nodeId);
 
-            return client.compute(clusterGrp).execute(taskCls, new VisorTaskArgument<>(nodeIds, arg, false));
+            return client.compute(clusterGrp).execute(taskCls, new VisorTaskArgument<>(nodeId, arg, false));
         }
         catch (InterruptedException e) {
             throw new RuntimeException(e);
@@ -137,13 +139,11 @@ public final class MetricUtils {
     /**
      * Get baseline nodes attributes.
      *
-     * @param client Client.
      * @param consistentIds Consistent ids.
      * @param attrs Attributes.
      */
-    public static Map<String, Map<String, Object>> baselineNodesAttributes(IgniteClient client,
-        Collection<?> consistentIds, String... attrs) {
-        List<List<?>> allNodesAttrs = view(client, BASELINE_NODE_ATTRIBUTES_VIEW, client.cluster().node().id());
+    public Map<String, Map<String, Object>> baselineNodesAttributes(Collection<?> consistentIds, String... attrs) {
+        List<List<?>> allNodesAttrs = view(BASELINE_NODE_ATTRIBUTES_VIEW, client.cluster().node().id());
 
         List<String> attrsList = List.of(attrs);
 
@@ -169,7 +169,8 @@ public final class MetricUtils {
      * @param k K.
      * @param v V.
      */
-    private static <K, V> Map<K, V> append(@Nullable Map<K, V> map, K k, V v) {
+    // TODO Move to util class or replace by some existing utility method?
+    private <K, V> Map<K, V> append(@Nullable Map<K, V> map, K k, V v) {
         if (map == null) {
             Map<K, V> map0 = new HashMap<>();
             map0.put(k, v);
@@ -186,17 +187,17 @@ public final class MetricUtils {
     /**
      * Partition nodes by state: online, offline, or outside of baseline.
      *
-     * @param client Client.
      * @param onlineBaselineNodes Online baseline nodes.
      * @param offlineBaselineNodes Offline baseline nodes.
      * @param nonBaselineNodes Server nodes outside of baseline.
      */
-    public static void groupServerNodesByState(IgniteClient client, Collection<OnlineNodeInfo> onlineBaselineNodes,
+    public void groupServerNodesByState(Collection<OnlineNodeInfo> onlineBaselineNodes,
         Collection<OfflineNodeInfo> offlineBaselineNodes, Set<OnlineNodeInfo> nonBaselineNodes) {
+        ClientClusterGroup servers = client.cluster().forServers();
 
-        List<List<?>> baselineNodesView = view(client, BASELINE_NODES_VIEW, client.cluster().node().id());
+        List<List<?>> baselineNodesView = view(BASELINE_NODES_VIEW, servers.node().id());
 
-        Set<ClusterNode> nonHandledNodes = new HashSet<>(client.cluster().nodes());
+        Set<ClusterNode> nonHandledNodes = new HashSet<>(servers.nodes());
 
         Set<Object> offlineConsistentIds = new HashSet<>();
 
@@ -209,7 +210,7 @@ public final class MetricUtils {
                 .findFirst();
 
             if (nodeOpt.isPresent() && online) {
-                onlineBaselineNodes.add(toNodeInfo(client, nodeOpt.get()));
+                onlineBaselineNodes.add(toNodeInfo(nodeOpt.get()));
 
                 nonHandledNodes.remove(nodeOpt.get());
             }
@@ -217,31 +218,29 @@ public final class MetricUtils {
                 offlineConsistentIds.add(consistentId);
         }
 
-        offlineBaselineNodes.addAll(offlineByConsistentIds(client, offlineConsistentIds));
+        offlineBaselineNodes.addAll(offlineByConsistentIds(offlineConsistentIds));
 
         nonBaselineNodes.addAll(nonHandledNodes.stream()
-            .map(n -> toNodeInfo(client, n))
+            .map(this::toNodeInfo)
             .collect(Collectors.toSet()));
     }
 
     /**
-     * @param client Client.
      * @param node Node.
      */
-    public static OnlineNodeInfo toNodeInfo(IgniteClient client, ClusterNode node) {
+    private OnlineNodeInfo toNodeInfo(ClusterNode node) {
         return new OnlineNodeInfo(
             node,
-            singleMetric(client, "sys.UpTime", node.id(), Long.class, -1L));
+            singleMetric("sys.UpTime", node.id(), Long.class, -1L));
     }
 
     /**
      * Get offline nodes attributes by consistent ids.
      *
-     * @param client Client.
      * @param offlineConsistentIds Offline nodes consistent ids.
      */
-    public static Set<OfflineNodeInfo> offlineByConsistentIds(IgniteClient client, Collection<?> offlineConsistentIds) {
-        Map<String, Map<String, Object>> attrsMap = baselineNodesAttributes(client, offlineConsistentIds,
+    public Set<OfflineNodeInfo> offlineByConsistentIds(Collection<?> offlineConsistentIds) {
+        Map<String, Map<String, Object>> attrsMap = baselineNodesAttributes(offlineConsistentIds,
             "org.apache.ignite.ips", "TcpCommunicationSpi.comm.tcp.host.names");
 
         return attrsMap.entrySet()
@@ -249,5 +248,36 @@ public final class MetricUtils {
             .map(e -> new OfflineNodeInfo(e.getKey(), e.getValue().get("org.apache.ignite.ips"),
                 e.getValue().get("TcpCommunicationSpi.comm.tcp.host.names")))
             .collect(Collectors.toSet());
+    }
+
+    /**
+     *
+     */
+    // TODO: Is an oldest always a coordinator? With Zookeper SPI?
+    public OnlineNodeInfo coordinator() {
+        return toNodeInfo(client.cluster().forOldest().node());
+    }
+
+    /**
+     *
+     */
+    public Set<OnlineNodeInfo> clientNodes() {
+        return client.cluster().forClients()
+            .nodes()
+            .stream()
+            .map(this::toNodeInfo)
+            .collect(Collectors.toSet());
+    }
+
+    /**
+     *
+     */
+    public ClusterState clusterState() {
+        return client.cluster().state();
+    }
+
+    /** {@inheritDoc} */
+    @Override public void close() {
+        client.close();
     }
 }

@@ -2,38 +2,26 @@ package dev.ignitop.ignite;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 import dev.ignitop.ignite.topology.OfflineNodeInfo;
 import dev.ignitop.ignite.topology.OnlineNodeInfo;
 import dev.ignitop.ignite.topology.TopologyInformation;
-import dev.ignitop.ignite.util.MetricUtils;
-import org.apache.ignite.Ignition;
-import org.apache.ignite.client.ClientCluster;
-import org.apache.ignite.client.IgniteClient;
-import org.apache.ignite.cluster.ClusterNode;
-import org.apache.ignite.configuration.ClientConfiguration;
+import dev.ignitop.ignite.util.IgniteClientHelper;
 
-import static dev.ignitop.ignite.util.MetricUtils.groupServerNodesByState;
-import static dev.ignitop.ignite.util.MetricUtils.singleMetric;
-import static dev.ignitop.ignite.util.MetricUtils.toNodeInfo;
+import static dev.ignitop.ignite.util.IgniteClientHelper.REBALANCED_METRIC;
+import static dev.ignitop.ignite.util.IgniteClientHelper.TOPOLOGY_VERSION_METRIC;
 
 /**
  *
  */
-public class IgniteManager implements AutoCloseable {
-    /** Client. */
-    private final IgniteClient client;
+public class IgniteManager {
+    /** Ignite client helper. */
+    private final IgniteClientHelper igniteClientHelper;
 
     /**
-     * @param addresses Addresses.
+     * @param igniteClientHelper Ignite client helper.
      */
-    public IgniteManager(String... addresses) {
-        client = Ignition.startClient(new ClientConfiguration().setAddresses(addresses));
-    }
-
-    /** {@inheritDoc} */
-    @Override public void close() {
-        client.close();
+    public IgniteManager(IgniteClientHelper igniteClientHelper) {
+        this.igniteClientHelper = igniteClientHelper;
     }
 
     /**
@@ -44,30 +32,21 @@ public class IgniteManager implements AutoCloseable {
         Set<OfflineNodeInfo> offlineBaselineNodes = new HashSet<>();
         Set<OnlineNodeInfo> nonBaselineNodes = new HashSet<>();
 
-        groupServerNodesByState(client, onlineBaselineNodes, offlineBaselineNodes, nonBaselineNodes);
+        igniteClientHelper.groupServerNodesByState(onlineBaselineNodes, offlineBaselineNodes, nonBaselineNodes);
 
-        ClientCluster cluster = client.cluster();
+        OnlineNodeInfo crd = igniteClientHelper.coordinator();
 
-        // TODO: Is an oldest a coordinator?
-        ClusterNode crd = cluster.forOldest().node();
-
-        long topVer = singleMetric(client, MetricUtils.TOPOLOGY_VERSION_METRIC, crd.id(), Long.class, -1L);
-        boolean rebalanced = singleMetric(client, MetricUtils.REBALANCED_METRIC, crd.id(), Boolean.class, false);
-
-        Set<OnlineNodeInfo> clients = cluster.forClients()
-            .nodes()
-            .stream()
-            .map(n -> toNodeInfo(client, n))
-            .collect(Collectors.toSet());
+        long topVer = igniteClientHelper.singleMetric(TOPOLOGY_VERSION_METRIC, crd.nodeId(), Long.class, -1L);
+        boolean rebalanced = igniteClientHelper.singleMetric(REBALANCED_METRIC, crd.nodeId(), Boolean.class, false);
 
         return new TopologyInformation(
             onlineBaselineNodes,
             offlineBaselineNodes,
             nonBaselineNodes,
-            clients,
-            toNodeInfo(client, crd),
+            igniteClientHelper.clientNodes(),
+            crd,
             topVer,
-            cluster.state(),
+            igniteClientHelper.clusterState(),
             rebalanced);
     }
 }
