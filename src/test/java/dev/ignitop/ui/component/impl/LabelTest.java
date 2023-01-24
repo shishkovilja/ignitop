@@ -106,6 +106,15 @@ class LabelTest {
     }
 
     /**
+     *
+     */
+    @Test
+    @Disabled("https://github.com/shishkovilja/ignitop/issues/38")
+    void contentWidth() {
+        fail("Unimplemented");
+    }
+
+    /**
      * @param lblBuilderFunc Label builder function.
      * @param ansiBuilderFunc Ansi builder function.
      */

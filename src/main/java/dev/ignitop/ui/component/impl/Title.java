@@ -80,6 +80,7 @@ public class Title implements TerminalComponent {
     }
 
     /** {@inheritDoc} */
+    // TODO Should it be WHOLE_LINE?
     @Override public int contentWidth() {
         return text.length();
     }
