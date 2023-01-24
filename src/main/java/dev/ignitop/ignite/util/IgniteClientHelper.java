@@ -28,7 +28,7 @@ import org.jetbrains.annotations.Nullable;
 /**
  *
  */
-public final class IgniteClientHelper implements AutoCloseable {
+public class IgniteClientHelper implements AutoCloseable {
     /** Baseline node attributes system view. */
     public static final String BASELINE_NODE_ATTRIBUTES_VIEW = "BASELINE_NODE_ATTRIBUTES";
 
