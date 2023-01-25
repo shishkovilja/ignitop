@@ -16,7 +16,7 @@ class HeaderTest {
      */
     @Test
     void renderNormal() {
-        String expTitle = ansi()
+        String expHdr = ansi()
             .fg(Ansi.Color.WHITE)
             .bgDefault()
             .a(" ".repeat(6))
@@ -30,9 +30,9 @@ class HeaderTest {
             .toString() +
             System.lineSeparator();
 
-        String renderedTitle = TestUtils.renderToString(new Header("Header"), 20);
+        String renderedHdr = TestUtils.renderToString(new Header("Header"), 20);
 
-        assertEquals(expTitle, renderedTitle);
+        assertEquals(expHdr, renderedHdr);
     }
 
     /**
@@ -40,7 +40,7 @@ class HeaderTest {
      */
     @Test
     void render_withWidth1() {
-        String expTitle = ansi()
+        String expHdr = ansi()
             .fg(Ansi.Color.WHITE)
             .bgDefault()
             .a("")
@@ -53,9 +53,9 @@ class HeaderTest {
             .toString() +
             System.lineSeparator();
 
-        String renderedTitle = TestUtils.renderToString(new Header("Header"), 1);
+        String renderedHdr = TestUtils.renderToString(new Header("Header"), 1);
 
-        assertEquals(expTitle, renderedTitle);
+        assertEquals(expHdr, renderedHdr);
     }
 
     /**
@@ -63,7 +63,7 @@ class HeaderTest {
      */
     @Test
     void render_withWidth3() {
-        String expTitle = ansi()
+        String expHdr = ansi()
             .fg(Ansi.Color.WHITE)
             .bgDefault()
             .a("")
@@ -76,9 +76,9 @@ class HeaderTest {
             .toString() +
             System.lineSeparator();
 
-        String renderedTitle = TestUtils.renderToString(new Header("Header"), 3);
+        String renderedHdr = TestUtils.renderToString(new Header("Header"), 3);
 
-        assertEquals(expTitle, renderedTitle);
+        assertEquals(expHdr, renderedHdr);
     }
 
     /**
@@ -86,7 +86,7 @@ class HeaderTest {
      */
     @Test
     void render_withContentWidth() {
-        String expTitle = ansi()
+        String expHdr = ansi()
             .fg(Ansi.Color.WHITE)
             .bgDefault()
             .a("")
@@ -102,9 +102,9 @@ class HeaderTest {
 
         Header hdr = new Header("Header");
 
-        String renderedTitle = TestUtils.renderToString(hdr, hdr.contentWidth());
+        String renderedHdr = TestUtils.renderToString(hdr, hdr.contentWidth());
 
-        assertEquals(expTitle, renderedTitle);
+        assertEquals(expHdr, renderedHdr);
     }
 
     /**

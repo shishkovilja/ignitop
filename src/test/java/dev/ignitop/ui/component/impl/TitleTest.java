@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.fusesource.jansi.Ansi.ansi;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  *
@@ -39,8 +38,72 @@ class TitleTest {
      *
      */
     @Test
-    void render_withWidthLessThanContent() {
-        fail("Unimplemeted");
+    void render_withWidth1() {
+        String expTitle = ansi()
+            .fgBlack()
+            .bgGreen()
+            .a("")
+            .bold()
+            .a("<")
+            .a("")
+            .boldOff()
+            .a("")
+            .reset()
+            .toString() +
+            System.lineSeparator();
+
+        String renderedTitle = TestUtils.renderToString(new Title("Title"), 1);
+
+        assertEquals(expTitle, renderedTitle);
+    }
+
+    /**
+     *
+     */
+    @Test
+    void render_withWidth3() {
+        String expTitle = ansi()
+            .fgBlack()
+            .bgGreen()
+            .a("")
+            .bold()
+            .a("<")
+            .a("Ti")
+            .boldOff()
+            .a("")
+            .reset()
+            .toString() +
+            System.lineSeparator();
+
+        String renderedTitle = TestUtils.renderToString(new Title("Title"), 3);
+
+        assertEquals(expTitle, renderedTitle);
+    }
+
+    /**
+     *
+     */
+    @Test
+    void render_withContentWidth() {
+        String expTitle = ansi()
+            .fgBlack()
+            .bgGreen()
+            .a("")
+            .bold()
+            .a("<")
+            .a("Title")
+            .a(">")
+            .boldOff()
+            .a("")
+            .reset()
+            .toString() +
+            System.lineSeparator();
+
+        Title title = new Title("Title");
+
+        String renderedTitle = TestUtils.renderToString(title, title.contentWidth());
+
+        assertEquals(expTitle, renderedTitle);
     }
 
     /**
@@ -48,6 +111,6 @@ class TitleTest {
      */
     @Test
     void contentWidth() {
-        assertEquals(5, new Title("Title").contentWidth());
+        assertEquals(7, new Title("Title").contentWidth());
     }
 }
