@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.fusesource.jansi.Ansi.ansi;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  *
@@ -40,8 +39,72 @@ class HeaderTest {
      *
      */
     @Test
-    void render_withWidthLessThanContent() {
-        fail("Unimplemeted");
+    void render_withWidth1() {
+        String expTitle = ansi()
+            .fg(Ansi.Color.WHITE)
+            .bgDefault()
+            .a("")
+            .bold()
+            .a("|")
+            .a("")
+            .boldOff()
+            .a("")
+            .reset()
+            .toString() +
+            System.lineSeparator();
+
+        String renderedTitle = TestUtils.renderToString(new Header("Header"), 1);
+
+        assertEquals(expTitle, renderedTitle);
+    }
+
+    /**
+     *
+     */
+    @Test
+    void render_withWidth3() {
+        String expTitle = ansi()
+            .fg(Ansi.Color.WHITE)
+            .bgDefault()
+            .a("")
+            .bold()
+            .a("|")
+            .a("He")
+            .boldOff()
+            .a("")
+            .reset()
+            .toString() +
+            System.lineSeparator();
+
+        String renderedTitle = TestUtils.renderToString(new Header("Header"), 3);
+
+        assertEquals(expTitle, renderedTitle);
+    }
+
+    /**
+     *
+     */
+    @Test
+    void render_withContentWidth() {
+        String expTitle = ansi()
+            .fg(Ansi.Color.WHITE)
+            .bgDefault()
+            .a("")
+            .bold()
+            .a("|")
+            .a("Header")
+            .a("|")
+            .boldOff()
+            .a("")
+            .reset()
+            .toString() +
+            System.lineSeparator();
+
+        Header hdr = new Header("Header");
+
+        String renderedTitle = TestUtils.renderToString(hdr, hdr.contentWidth());
+
+        assertEquals(expTitle, renderedTitle);
     }
 
     /**
@@ -49,6 +112,6 @@ class HeaderTest {
      */
     @Test
     void contentWidth() {
-        assertEquals(6, new Header("Header").contentWidth());
+        assertEquals(8, new Header("Header").contentWidth());
     }
 }
