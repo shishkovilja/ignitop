@@ -20,8 +20,8 @@ class TableTest {
      */
     @Test
     void render_withExpanding() {
-        String veryWideHdr = "Very very very wide column";
-        String narrowHdr = "Narrcol";
+        String veryWideHdr = "Very very very wide header";
+        String narrowHdr = "Narrhdr";
 
         List<String> hdr = List.of(veryWideHdr, narrowHdr);
 
@@ -49,9 +49,18 @@ class TableTest {
      *
      */
     @Test
-    void render_withShrinking() {
+    void render_withContentShrinking() {
         fail("Unimplemented");
     }
+
+    /**
+     *
+     */
+    @Test
+    void render_withHeaderShrinking() {
+        fail("Unimplemented");
+    }
+
 
     /**
      *
@@ -129,7 +138,7 @@ class TableTest {
      */
     @Test
     void contentWidth_withContentWiderThanHeader() {
-        String wideHdr = "Very very very wide column";
+        String wideHdr = "Very very very wide header";
 
         List<String> hdr = List.of(wideHdr, wideHdr);
 
