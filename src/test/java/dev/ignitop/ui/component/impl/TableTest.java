@@ -20,42 +20,27 @@ class TableTest {
      */
     @Test
     void render_withExpanding() {
-        String veryWideColumn = "Very very very wide column";
-        String narrowColumn = "Narrcol";
+        String veryWideHdr = "Very very very wide column";
+        String narrowHdr = "Narrcol";
 
-        List<String> hdr = List.of(veryWideColumn, narrowColumn);
+        List<String> hdr = List.of(veryWideHdr, narrowHdr);
 
-        List<List<?>> rows = IntStream.range(0, 5)
-            .mapToObj(i -> List.of("Content [" + i + ",1]", "Content [" + i + ",2]"))
-            .collect(Collectors.toList());
+        List<List<?>> rows = rows(5);
 
         String renderedTable = TestUtils.renderToString(new Table(hdr, rows), 80);
 
-        // Table + line separator
-        assertEquals(7, renderedTable.lines().count());
+        // Header + rows + total items line
+        assertEquals(rows.size() + 2, renderedTable.lines().count());
 
         int cellsGap = 2;
 
         // Width is derived from the widest element, i.e. column header name itself
-        int expVeryWideColumnWidth = veryWideColumn.length() + cellsGap + 24;
+        int expWideColWidth = veryWideHdr.length() + cellsGap + 24;
 
         // Width is derived from the widest element, i.e. from column content
-        int expNarrowColumnWidth = "Content [x,y]".length() + cellsGap + 13;
+        int expNarrowColWidth = "Content [x,y]".length() + cellsGap + 13;
 
-        String rowFormat = String.format("%%-%ds%%-%ds", expVeryWideColumnWidth, expNarrowColumnWidth);
-
-        String expHdr = ansi()
-            .fgBlack()
-            .bgGreen()
-            .a(String.format(rowFormat, veryWideColumn, narrowColumn))
-            .reset().toString();
-
-        String expRows = rows.stream()
-            .map(l -> String.format(rowFormat, l.get(0), l.get(1)))
-            .collect(Collectors.joining(lineSeparator()));
-
-        String expTable = String.join(lineSeparator(), expHdr, expRows,"Total items: " + rows.size()) +
-            lineSeparator();
+        String expTable = table(List.of(veryWideHdr, narrowHdr), rows, List.of(expWideColWidth, expNarrowColWidth));
 
         assertEquals(expTable, renderedTable);
     }
@@ -129,13 +114,11 @@ class TableTest {
      */
     @Test
     void contentWidth_withContentNarrowerThanHeader() {
-        String narrowColumn = "Narrcol";
+        String narrowHdr = "Narrhdr";
 
-        List<String> hdr = List.of(narrowColumn, narrowColumn);
+        List<String> hdr = List.of(narrowHdr, narrowHdr);
 
-        List<List<?>> rows = IntStream.range(0, 5)
-            .mapToObj(i -> List.of("Content [" + i + ",1]", "Content [" + i + ",2]"))
-            .collect(Collectors.toList());
+        List<List<?>> rows = rows(5);
 
         assertEquals(("Content [x,y]".length() + 2) * 2,
             new Table(hdr, rows).contentWidth());
@@ -146,14 +129,43 @@ class TableTest {
      */
     @Test
     void contentWidth_withContentWiderThanHeader() {
-        String veryWideColumn = "Very very very wide column";
+        String wideHdr = "Very very very wide column";
 
-        List<String> hdr = List.of(veryWideColumn, veryWideColumn);
+        List<String> hdr = List.of(wideHdr, wideHdr);
 
-        List<List<?>> rows = IntStream.range(0, 5)
+        List<List<?>> rows = rows(5);
+
+        assertEquals((wideHdr.length() + 2) * 2, new Table(hdr, rows).contentWidth());
+    }
+
+    /**
+     * @param rowsCnt Rows count.
+     */
+    private List<List<?>> rows(int rowsCnt) {
+        return IntStream.range(0, rowsCnt)
             .mapToObj(i -> List.of("Content [" + i + ",1]", "Content [" + i + ",2]"))
             .collect(Collectors.toList());
+    }
 
-        assertEquals((veryWideColumn.length() + 2) * 2, new Table(hdr, rows).contentWidth());
+    /**
+     * @param hdr Header.
+     * @param rows Rows.
+     * @param colWidths Column widths.
+     */
+    private String table(List<String> hdr, List<List<?>> rows, List<Integer> colWidths) {
+        String rowFormat = String.format("%%-%ds".repeat(colWidths.size()), colWidths.toArray());
+
+        String expHdr = ansi()
+            .fgBlack()
+            .bgGreen()
+            .a(String.format(rowFormat, hdr.toArray()))
+            .reset().toString();
+
+        String expRows = rows.stream()
+            .map(l -> String.format(rowFormat, l.toArray()))
+            .collect(Collectors.joining(lineSeparator()));
+
+        return String.join(lineSeparator(), expHdr, expRows,"Total items: " + rows.size()) +
+            lineSeparator();
     }
 }
