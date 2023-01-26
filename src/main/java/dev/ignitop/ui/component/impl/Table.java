@@ -41,7 +41,7 @@ public class Table implements TerminalComponent {
         this.rows = Collections.unmodifiableList(rows);
 
         hdrWidths = hdr.stream()
-            .map(o -> String.valueOf(o).length() + CELLS_GAP)
+            .map(o -> String.valueOf(o).length())
             .collect(Collectors.toUnmodifiableList());
 
         // Pre-fill column widths by header length.
