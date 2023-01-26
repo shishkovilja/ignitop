@@ -27,7 +27,6 @@ class TableTest {
         // Delta = 80 - (28 + 16) = 36
         // Col1: 28 * 36 / 44 -> expand on 22 -> 50 (36 - 22 = 14 of delta left) -> minus 2 gap -> 48
         // Col2: 16 * 36 / 44 -> expand on 13 -> 29 (1 of delta left) -> 30 -> minus 2 gap -> 28
-
         checkTable(80, List.of("Very very very wide header", "Narrhdr"), 25, List.of(48, 28));
     }
 
