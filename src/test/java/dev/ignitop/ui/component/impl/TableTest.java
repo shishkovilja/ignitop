@@ -187,6 +187,8 @@ class TableTest {
     }
 
     /**
+     * Output table with specified widths.
+     *
      * @param rowsWithHdr Rows with a header.
      * @param colWidths Column widths.
      */
