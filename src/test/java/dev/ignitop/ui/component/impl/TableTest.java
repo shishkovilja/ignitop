@@ -25,7 +25,7 @@ class TableTest {
     /** Test table rows count. */
     public static final int ROWS_COUNT = 25;
 
-    /** Widest content. It is narrower than {@code WIDE_HEADER}, but wider than {@code NARROW_HEADER} */
+    /** Widest content. It is narrower than {@code WIDE_HEADER}, but wider than {@code NARROW_HEADER}. */
     public static final String WIDEST_CONTENT = "Content [" + (ROWS_COUNT - 1) + ",1]";
 
     /**
