@@ -195,22 +195,31 @@ class TableTest {
 
         String rowFormat = String.format(
             "%%-%ds".repeat(colWidths.size()),
-            colWidths.
-                stream()
+            colWidths.stream()
                 .map(i -> i + colGap)
                 .toArray());
 
-        String expHdr = ansi()
-            .fgBlack()
-            .bgGreen()
-            .a(String.format(rowFormat, rowsWithHdr.get(0).toArray()))
-            .reset().toString();
+        StringBuilder sb = new StringBuilder();
 
-        String expRows = rowsWithHdr.subList(1, rowsWithHdr.size()).stream()
-            .map(l -> String.format(rowFormat, l.toArray()))
-            .collect(Collectors.joining(lineSeparator()));
+        for (int i = 0; i < rowsWithHdr.size(); i++) {
+            String formattedStr = String.format(rowFormat, rowsWithHdr.get(i).toArray());
 
-        return String.join(lineSeparator(), expHdr, expRows,"Total items: " + (rowsWithHdr.size() - 1)) +
-            lineSeparator();
+            if (i == 0) {
+                sb.append(ansi().fgBlack()
+                    .bgGreen()
+                    .a(formattedStr)
+                    .reset()
+                    .toString());
+            }
+            else
+                sb.append(formattedStr);
+
+            sb.append(lineSeparator());
+        }
+
+        return sb.append("Total items: ")
+            .append(rowsWithHdr.size() - 1)
+            .append(lineSeparator())
+            .toString();
     }
 }
