@@ -73,6 +73,8 @@ public class Table implements TerminalComponent {
     }
 
     /** {@inheritDoc} */
+    // TODO: Add headers shrinking, if renderWidth less than total headers width.
+    // TODO: Add headers shrinking, if remainingDelta is greater, than last column width.
     @Override public void render(int width, PrintStream out) {
         int contentWidthDelta = contentWidth - width;
 
@@ -84,13 +86,12 @@ public class Table implements TerminalComponent {
             int columnSizeDelta = contentWidthDelta * oldWidth / contentWidth;
 
             if (columnSizeDelta == 0)
-                columnSizeDelta = contentWidthDelta < 0 ? -1 : 1;
-
+                columnSizeDelta = Integer.compare(contentWidthDelta, 0);
 
             int newWidth = oldWidth - columnSizeDelta;
 
-            if (newWidth < hdrWidths.get(i))
-                newWidth = hdrWidths.get(i);
+            if (newWidth < hdrWidths.get(i) + CELLS_GAP)
+                newWidth = hdrWidths.get(i) + CELLS_GAP;
 
             remainingDelta -= oldWidth - newWidth;
 
@@ -138,5 +139,19 @@ public class Table implements TerminalComponent {
 
         out.printf(hdrFmtStr, columnNames);
         out.println();
+    }
+
+    /**
+     * @return Table header.
+     */
+    public List<String> header() {
+        return hdr;
+    }
+
+    /**
+     * @return Table rows.
+     */
+    public List<List<?>> rows() {
+        return rows;
     }
 }

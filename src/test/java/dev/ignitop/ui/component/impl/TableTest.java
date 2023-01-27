@@ -16,6 +16,18 @@ import static org.junit.jupiter.api.Assertions.fail;
  *
  */
 class TableTest {
+    /** Wide header. */
+    public static final String WIDE_HEADER = "Very very very wide header";
+
+    /** Narrow header. */
+    public static final String NARROW_HEADER = "Narrhdr";
+
+    /** Test table rows count. */
+    public static final int ROWS_COUNT = 25;
+
+    /** Widest content. It is narrower than {@code WIDE_HEADER}, but wider than {@code NARROW_HEADER} */
+    public static final String WIDEST_CONTENT = "Content [" + (ROWS_COUNT - 1) + ",1]";
+
     /**
      *
      */
@@ -27,7 +39,9 @@ class TableTest {
         // Delta = 80 - (28 + 16) = 36
         // Col1: 28 * 36 / 44 -> expand on 22 -> 50 (36 - 22 = 14 of delta left) -> minus 2 gap -> 48
         // Col2: 16 * 36 / 44 -> expand on 13 -> 29 (1 of delta left) -> 30 -> minus 2 gap -> 28
-        checkTable(80, List.of("Very very very wide header", "Narrhdr"), 25, List.of(48, 28));
+        checkTable(new Table(List.of(WIDE_HEADER, NARROW_HEADER), rows(ROWS_COUNT)),
+            80,
+            List.of(48, 28));
     }
 
     /**
@@ -41,24 +55,61 @@ class TableTest {
         // Delta = 20 - (16 + 16) = -12
         // Col1: -12 * 16 / 32 -> shrink on 6 -> 10 (-12 - (-6) = -6 of delta left) -> minus 2 gap -> 8
         // Col2: -12 * 16 / 32 -> shrink on 6 -> 10 (0 of delta left) -> minus 2 gap -> 8
-        checkTable(20, List.of("Narrhdr", "Narrhdr"), 25, List.of(8, 8));
+        checkTable(new Table(List.of(NARROW_HEADER, NARROW_HEADER), rows(ROWS_COUNT)),
+            20,
+            List.of(8, 8));
     }
 
     /**
      *
      */
     @Test
-    void render_withHeaderShrinking() {
+    void render_withTableShrinkingOn1Char() {
+        Table table = new Table(List.of(WIDE_HEADER, NARROW_HEADER), rows(ROWS_COUNT));
+
+        checkTable(table, table.contentWidth() - 1, List.of(WIDE_HEADER.length(), WIDEST_CONTENT.length() - 1));
+    }
+
+    /**
+     *
+     */
+    @Test
+    void render_withTableShrinkingOn2Chars() {
+        Table table = new Table(List.of(WIDE_HEADER, NARROW_HEADER), rows(ROWS_COUNT));
+
+        checkTable(table, table.contentWidth() - 2, List.of(WIDE_HEADER.length(), WIDEST_CONTENT.length() - 2));
+    }
+
+    /**
+     *
+     */
+    @Test
+    void render_withHeaderShrinking_whenRenderWidthIsLessThanTotalHeadersWidth() {
         fail("Unimplemented");
     }
 
+
+    /**
+     *
+     */
+    @Test
+    void render_withHeaderShrinking_whenLastColumnWidthIsLessThanRemainingDelta() {
+        fail("Unimplemented");
+
+        // |Very ... Very Wide|Very ... Very Wide|Very ... Very Wide|Very ... Very Wide|Narrow|
+    }
 
     /**
      *
      */
     @Test
     void render_withContentWidth() {
-        fail("Unimplemented");
+        int col0 = WIDE_HEADER.length();
+        int col1 = WIDEST_CONTENT.length();
+
+        Table table = new Table(List.of(WIDE_HEADER, NARROW_HEADER), rows(ROWS_COUNT));
+
+        checkTable(table, table.contentWidth(), List.of(col0, col1));
     }
 
     /**
@@ -114,7 +165,7 @@ class TableTest {
      */
     @Test
     void contentWidth_withContentNarrowerThanHeader() {
-        String narrowHdr = "Narrhdr";
+        String narrowHdr = NARROW_HEADER;
 
         List<String> hdr = List.of(narrowHdr, narrowHdr);
 
@@ -129,7 +180,7 @@ class TableTest {
      */
     @Test
     void contentWidth_withContentWiderThanHeader() {
-        String wideHdr = "Very very very wide header";
+        String wideHdr = WIDE_HEADER;
 
         List<String> hdr = List.of(wideHdr, wideHdr);
 
@@ -141,31 +192,33 @@ class TableTest {
     /**
      * @param rowsCnt Rows count.
      */
-    private List<List<?>> rows(int rowsCnt) {
+    private static List<List<?>> rows(int rowsCnt) {
         return IntStream.range(0, rowsCnt)
             .mapToObj(i -> List.of("Content [" + i + ",1]", "Content [" + i + ",2]"))
             .collect(Collectors.toList());
     }
 
-    /**
-     * @param renderWidth Render width.
-     * @param hdr Header.
-     * @param rowsCnt Rows count.
-     * @param expColWidths Expected column widths, excluding column gap.
-     */
-    private void checkTable(int renderWidth, List<String> hdr, int rowsCnt, List<Integer> expColWidths) {
-        List<List<?>> rows = rows(rowsCnt);
 
-        String renderedTable = TestUtils.renderToString(new Table(hdr, rows), renderWidth);
+
+    /**
+     * Check,that rendering of a table with a specified width will be performed with the expected column widths.
+     * Expected (not rendered) table shrinking to the expected column widths is performed in this method.
+     *
+     * @param table Table.
+     * @param renderWidth Render width.
+     * @param expColWidths Expected column widths.
+     */
+    private void checkTable(Table table, int renderWidth, List<Integer> expColWidths) {
+        String renderedTable = TestUtils.renderToString(table, renderWidth);
 
         // Header + rows + total items line.
-        assertEquals(rows.size() + 2, renderedTable.lines().count());
+        assertEquals(table.rows().size() + 2, renderedTable.lines().count());
 
         ArrayList<List<String>> rowsWithHdr = new ArrayList<>();
 
-        rowsWithHdr.add(hdr);
+        rowsWithHdr.add(table.header());
 
-        for (List<?> row : rows) {
+        for (List<?> row : table.rows()) {
             rowsWithHdr.add(row.stream()
                 .map(String::valueOf)
                 .collect(Collectors.toList()));
@@ -181,7 +234,7 @@ class TableTest {
             }
         }
 
-        String expTable = table(rowsWithHdr, expColWidths);
+        String expTable = tableWithWidths(rowsWithHdr, expColWidths);
 
         assertEquals(expTable, renderedTable);
     }
@@ -192,7 +245,7 @@ class TableTest {
      * @param rowsWithHdr Rows with a header.
      * @param colWidths Column widths.
      */
-    private String table(List<List<String>> rowsWithHdr, List<Integer> colWidths) {
+    private String tableWithWidths(List<List<String>> rowsWithHdr, List<Integer> colWidths) {
         int colGap = 2;
 
         String rowFormat = String.format(
