@@ -32,13 +32,13 @@ class TableTest {
      *
      */
     @Test
-    void render_withExpanding() {
+    void render_withTableExpanding() {
         // Calculating by widest element:
         // "Very very very wide header  Content [24,1]  "
         // Col1: 26 + 2 (gap) = 28      Col2: 14 + 2 (gap) = 16
         // Delta = 80 - (28 + 16) = 36
-        // Col1: 28 * 36 / 44 -> expand on 22 -> 50 (36 - 22 = 14 of delta left) -> minus 2 gap -> 48
-        // Col2: 16 * 36 / 44 -> expand on 13 -> 29 (1 of delta left) -> 30 -> minus 2 gap -> 28
+        // Col1: 28 * 36 / 44 -> 28 expand on 22 -> 50 (36 - 22 = 14 of delta left) -> minus 2 gap -> 48
+        // Col2: 16 * 36 / 44 -> 16 expand on 13 -> 29 (1 of delta left) -> extra expand on 1 -> 30 -> minus 2 gap -> 28
         checkTable(new Table(List.of(WIDE_HEADER, NARROW_HEADER), rows(ROWS_COUNT)),
             80,
             List.of(48, 28));
@@ -53,8 +53,8 @@ class TableTest {
         // "Content [24,1]  Content [24,1]  "
         // Col1: 14 + 2 (gap) = 16      Col2: 14 + 2 (gap) = 16
         // Delta = 20 - (16 + 16) = -12
-        // Col1: -12 * 16 / 32 -> shrink on 6 -> 10 (-12 - (-6) = -6 of delta left) -> minus 2 gap -> 8
-        // Col2: -12 * 16 / 32 -> shrink on 6 -> 10 (0 of delta left) -> minus 2 gap -> 8
+        // Col1: -12 * 16 / 32 -> 16 shrink on 6 -> 10 (-12 - (-6) = -6 of delta left) -> minus 2 gap -> 8
+        // Col2: -12 * 16 / 32 -> 16 shrink on 6 -> 10 (0 of delta left) -> minus 2 gap -> 8
         checkTable(new Table(List.of(NARROW_HEADER, NARROW_HEADER), rows(ROWS_COUNT)),
             20,
             List.of(8, 8));
@@ -84,8 +84,17 @@ class TableTest {
      *
      */
     @Test
-    void render_withHeaderShrinking_whenRenderWidthIsLessThanTotalHeadersWidth() {
-        fail("Unimplemented");
+    void render_whenRenderWidthIsLessThanTotalHeadersWidthOn1() {
+        Table table = new Table(List.of(WIDE_HEADER, NARROW_HEADER), rows(ROWS_COUNT));
+
+        // Calculating by widest element:
+        // "Very very very wide header  Content [24,1]  "
+        // Col1: 26 + 2 (gap) = 28      Col2: 14 + 2 (gap) = 16
+        // Delta = (26 + 7 - 1) - (28 + 16) = -12
+        // Col1: -12 * 28 / 44 -> 28 shrink on 7 -> 21 (-12 - (-7) = -5 of delta left) -> minus 2 gap -> 19
+        // Col2: -12 * 16 / 44 -> 16 shrink on 4 -> 12 (-1 of delta left) -> extra shrink on 1 -> 11 -> minus 2 gap -> 9
+        checkTable(table, WIDE_HEADER.length() + NARROW_HEADER.length() - 1,
+            List.of(19, 9));
     }
 
 
@@ -216,7 +225,7 @@ class TableTest {
 
         ArrayList<List<String>> rowsWithHdr = new ArrayList<>();
 
-        rowsWithHdr.add(table.header());
+        rowsWithHdr.add(new ArrayList<>(table.header()));
 
         for (List<?> row : table.rows()) {
             rowsWithHdr.add(row.stream()

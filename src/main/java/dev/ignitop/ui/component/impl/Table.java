@@ -26,6 +26,9 @@ public class Table implements TerminalComponent {
     /** Header widths. */
     private final List<Integer> hdrWidths;
 
+    /** Header widths sum. */
+    private final int hdrWidthSum;
+
     /** Column widths. */
     private final List<Integer> columnWidths;
 
@@ -43,6 +46,8 @@ public class Table implements TerminalComponent {
         hdrWidths = hdr.stream()
             .map(o -> String.valueOf(o).length())
             .collect(Collectors.toUnmodifiableList());
+
+        hdrWidthSum = hdrWidths.stream().mapToInt(i -> i).sum();
 
         // Pre-fill column widths by header length.
         columnWidths = new ArrayList<>(hdrWidths);
@@ -78,6 +83,8 @@ public class Table implements TerminalComponent {
     @Override public void render(int width, PrintStream out) {
         int contentWidthDelta = contentWidth - width;
 
+        boolean dontShrinkHeaders = hdrWidthSum < width;
+
         int remainingDelta = contentWidthDelta;
 
         for (int i = 0; i < columnWidths.size(); i++) {
@@ -90,7 +97,7 @@ public class Table implements TerminalComponent {
 
             int newWidth = oldWidth - columnSizeDelta;
 
-            if (newWidth < hdrWidths.get(i) + CELLS_GAP)
+            if (dontShrinkHeaders && newWidth < hdrWidths.get(i) + CELLS_GAP)
                 newWidth = hdrWidths.get(i) + CELLS_GAP;
 
             remainingDelta -= oldWidth - newWidth;
