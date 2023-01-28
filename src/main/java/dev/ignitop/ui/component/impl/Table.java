@@ -40,6 +40,9 @@ public class Table implements TerminalComponent {
      * @param rows Rows.
      */
     public Table(List<String> hdr, List<List<?>> rows) {
+        if (hdr.isEmpty())
+            throw new IllegalArgumentException("Table columns headers list must not be empty");
+
         this.hdr = Collections.unmodifiableList(hdr);
         this.rows = Collections.unmodifiableList(rows);
 
@@ -60,6 +63,11 @@ public class Table implements TerminalComponent {
      */
     private void calculateContentWidth() {
         for (List<?> row : rows) {
+            if (row.size() != hdr.size()) {
+                throw new IllegalArgumentException("Row elements count does not correspond header elements count: " +
+                    "[rowSize=" + row.size() + ", hdrSize=" + hdr.size() + "]");
+            }
+
             for (int i = 0; i < row.size(); i++) {
                 Object cell = row.get(i);
 
@@ -78,8 +86,6 @@ public class Table implements TerminalComponent {
     }
 
     /** {@inheritDoc} */
-    // TODO: Add headers shrinking, if renderWidth less than total headers width.
-    // TODO: Add headers shrinking, if remainingDelta is greater, than last column width.
     @Override public void render(int width, PrintStream out) {
         int contentWidthDelta = contentWidth - width;
 
