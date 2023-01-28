@@ -11,7 +11,7 @@ import static java.lang.System.lineSeparator;
 import static org.fusesource.jansi.Ansi.ansi;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  *
@@ -136,15 +136,40 @@ class TableTest {
      */
     @Test
     void render_nullHeaderElement() {
-        fail("Unimplemented");
+        ArrayList<String> hdr = new ArrayList<>();
+        hdr.add("Header");
+        hdr.add(null);
+
+        Table table = new Table(hdr, List.of());
+
+        String renderedTable = TestUtils.renderToString(table, table.contentWidth());
+
+        String renderedHdr = renderedTable.lines()
+            .findFirst()
+            .orElseThrow();
+
+        assertTrue(renderedHdr.contains("Header  null  "));
     }
 
     /**
      *
      */
     @Test
-    void render_nullTableElement() {
-        fail("Unimplemented");
+    void render_withNullTableElement() {
+        ArrayList<Object> row = new ArrayList<>();
+        row.add("Cell01");
+        row.add(null);
+
+        Table table = new Table(List.of("Header1", "Header2"), List.of(row));
+
+        String renderedTable = TestUtils.renderToString(table, table.contentWidth());
+
+        List<String> renderedTableLines = renderedTable.lines()
+            .collect(Collectors.toList());
+
+        String row0 = renderedTableLines.get(1);
+
+        assertEquals("Cell01   null     ", row0);
     }
 
     /**
@@ -165,7 +190,7 @@ class TableTest {
         assertThrows(IllegalArgumentException.class,
             () -> new Table(
                 List.of("Header0", "Header1"),
-                List.of(List.of("Row00", "Row01"), List.of("Row10", "Row11", "Row12"))),
+                List.of(List.of("Cell00", "Cell01"), List.of("Cell10", "Cell11", "Cell12"))),
             "Row elements count does not correspond header elements count: [rowSize=3, hdrSize=2]");
     }
 
