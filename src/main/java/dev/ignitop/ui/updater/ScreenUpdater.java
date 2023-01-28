@@ -6,6 +6,8 @@ import dev.ignitop.ui.component.TerminalComponent;
 /**
  *
  */
+// TODO: Migrate to Supplier<Collection<Components>>.
+@SuppressWarnings("UnnecessaryModifier")
 public interface ScreenUpdater {
     /**
      *
