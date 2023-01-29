@@ -19,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static dev.ignitop.util.IgnitopUtils.formattedUptime;
+import static dev.ignitop.util.TestUtils.IGNITE_VERSION;
 import static dev.ignitop.util.TestUtils.renderToString;
 import static java.lang.System.lineSeparator;
 import static org.apache.ignite.cluster.ClusterState.ACTIVE;
@@ -34,10 +35,6 @@ import static org.mockito.Mockito.when;
  *
  */
 class TopologyInformationUpdaterTest {
-    /** Ignite version. */
-    public static final IgniteProductVersion IGNITE_VERSION = new IgniteProductVersion((byte)2, (byte)15, (byte)0,
-        0L, new byte[20]);
-
     /** Mock Ignite manager. */
     private IgniteManager igniteMgr;
 
