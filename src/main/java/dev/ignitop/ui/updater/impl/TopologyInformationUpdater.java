@@ -17,6 +17,7 @@ import dev.ignitop.ui.component.impl.Table;
 import dev.ignitop.ui.component.impl.Title;
 import dev.ignitop.ui.updater.ScreenUpdater;
 
+import static dev.ignitop.util.IgnitopUtils.formattedUptime;
 import static org.apache.ignite.cluster.ClusterState.INACTIVE;
 import static org.fusesource.jansi.Ansi.Color.GREEN;
 import static org.fusesource.jansi.Ansi.Color.RED;
@@ -101,20 +102,6 @@ public class TopologyInformationUpdater implements ScreenUpdater {
             .collect(Collectors.toList());
 
         return new Table(hdr, rows);
-    }
-
-    /**
-     * @param uptimeMillis Uptime millis.
-     */
-    private static String formattedUptime(long uptimeMillis) {
-        long totalSeconds = uptimeMillis / 1000;
-
-        long days = totalSeconds / (24 * 3600);
-        long hours = (totalSeconds / 3600)  % 24;
-        long minutes = (totalSeconds / 60) % 60;
-        long seconds = totalSeconds % 60;
-
-        return String.format("%dd %dh %dm %ds", days, hours, minutes, seconds);
     }
 
     /**
