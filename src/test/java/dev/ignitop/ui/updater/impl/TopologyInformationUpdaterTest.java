@@ -8,7 +8,7 @@ import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import dev.ignitop.ignite.IgniteManager;
+import dev.ignitop.ignite.IgniteHelper;
 import dev.ignitop.ignite.topology.OfflineNodeInfo;
 import dev.ignitop.ignite.topology.OnlineNodeInfo;
 import dev.ignitop.ignite.topology.TopologyInformation;
@@ -18,7 +18,7 @@ import org.apache.ignite.lang.IgniteProductVersion;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static dev.ignitop.util.IgnitopUtils.formattedUptime;
+import static dev.ignitop.util.IgniTopUtils.formattedUptime;
 import static dev.ignitop.util.TestUtils.IGNITE_VERSION;
 import static dev.ignitop.util.TestUtils.renderToString;
 import static java.lang.System.lineSeparator;
@@ -38,8 +38,8 @@ import static org.mockito.Mockito.when;
  *
  */
 class TopologyInformationUpdaterTest {
-    /** Mock Ignite manager. */
-    private IgniteManager igniteMgr;
+    /** Mock IgniteHelper. */
+    private IgniteHelper igniteHelper;
 
     /** Online baseline nodes. */
     private List<OnlineNodeInfo> onlineBaselineNodes;
@@ -58,7 +58,7 @@ class TopologyInformationUpdaterTest {
      */
     @BeforeEach
     void setUp() {
-        igniteMgr = mock(IgniteManager.class);
+        igniteHelper = mock(IgniteHelper.class);
 
         onlineBaselineNodes = new ArrayList<>();
         offlineNodes = new ArrayList<>();
@@ -104,9 +104,9 @@ class TopologyInformationUpdaterTest {
         TopologyInformation topInfo = topologyInformation(onlineCnt, offlineCnt, nonBaselineCnt,
             clientsCnt, topVer, clusterState, rebalanced);
 
-        when(igniteMgr.topologyInformation()).thenReturn(topInfo);
+        when(igniteHelper.topologyInformation()).thenReturn(topInfo);
 
-        TopologyInformationUpdater topInfoUpdater = new TopologyInformationUpdater(igniteMgr);
+        TopologyInformationUpdater topInfoUpdater = new TopologyInformationUpdater(igniteHelper);
 
         Iterator<TerminalComponent> iter = topInfoUpdater.components().iterator();
 

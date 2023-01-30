@@ -1,4 +1,4 @@
-package dev.ignitop.ignite.util;
+package dev.ignitop.ignite;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -11,6 +11,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import dev.ignitop.ignite.topology.OfflineNodeInfo;
 import dev.ignitop.ignite.topology.OnlineNodeInfo;
+import dev.ignitop.ignite.topology.TopologyInformation;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.client.ClientClusterGroup;
 import org.apache.ignite.client.IgniteClient;
@@ -23,12 +24,13 @@ import org.apache.ignite.internal.visor.metric.VisorMetricTaskArg;
 import org.apache.ignite.internal.visor.systemview.VisorSystemViewTask;
 import org.apache.ignite.internal.visor.systemview.VisorSystemViewTaskArg;
 import org.apache.ignite.internal.visor.systemview.VisorSystemViewTaskResult;
-import org.jetbrains.annotations.Nullable;
+
+import static dev.ignitop.util.IgniTopUtils.append;
 
 /**
  *
  */
-public class IgniteClientHelper implements AutoCloseable {
+public class IgniteHelper implements AutoCloseable {
     /** Baseline node attributes system view. */
     public static final String BASELINE_NODE_ATTRIBUTES_VIEW = "BASELINE_NODE_ATTRIBUTES";
 
@@ -47,8 +49,34 @@ public class IgniteClientHelper implements AutoCloseable {
     /**
      * @param addresses Addresses.
      */
-    public IgniteClientHelper(String... addresses) {
+    public IgniteHelper(String... addresses) {
         client = Ignition.startClient(new ClientConfiguration().setAddresses(addresses));
+    }
+
+    /**
+     *
+     */
+    public TopologyInformation topologyInformation() {
+        Set<OnlineNodeInfo> onlineBaselineNodes = new HashSet<>();
+        Set<OfflineNodeInfo> offlineBaselineNodes = new HashSet<>();
+        Set<OnlineNodeInfo> nonBaselineNodes = new HashSet<>();
+
+        groupServerNodesByState(onlineBaselineNodes, offlineBaselineNodes, nonBaselineNodes);
+
+        OnlineNodeInfo crd = coordinator();
+
+        long topVer = singleMetric(TOPOLOGY_VERSION_METRIC, crd.nodeId(), -1L);
+        boolean rebalanced = singleMetric(REBALANCED_METRIC, crd.nodeId(), false);
+
+        return new TopologyInformation(
+            onlineBaselineNodes,
+            offlineBaselineNodes,
+            nonBaselineNodes,
+            clientNodes(),
+            crd,
+            topVer,
+            clusterState(),
+            rebalanced);
     }
 
     /**
@@ -58,7 +86,7 @@ public class IgniteClientHelper implements AutoCloseable {
      * @param sysViewName System view name.
      * @param nodeId      Node Id.
      */
-    public List<List<?>> view(String sysViewName, UUID nodeId) {
+    private List<List<?>> view(String sysViewName, UUID nodeId) {
         return view(sysViewName, Set.of(nodeId))
             .getOrDefault(nodeId, List.of());
     }
@@ -69,7 +97,7 @@ public class IgniteClientHelper implements AutoCloseable {
      * @param sysViewName System view name.
      * @param nodeIds     Node ids.
      */
-    public Map<UUID, List<List<?>>> view(String sysViewName, Set<UUID> nodeIds) {
+    private Map<UUID, List<List<?>>> view(String sysViewName, Set<UUID> nodeIds) {
         Optional<UUID> randomNodeOpt = nodeIds.stream().findFirst();
 
         if (randomNodeOpt.isEmpty())
@@ -93,7 +121,7 @@ public class IgniteClientHelper implements AutoCloseable {
      * @param metricName Metric name.
      * @param nodeId Node id.
      */
-    public Map<String, ?> metric(String metricName, UUID nodeId) {
+    private Map<String, ?> metric(String metricName, UUID nodeId) {
         return (Map<String, ?>)executeTask(
             VisorMetricTask.class.getName(),
             new VisorMetricTaskArg(metricName),
@@ -106,10 +134,9 @@ public class IgniteClientHelper implements AutoCloseable {
      *
      * @param metricName Metric name.
      * @param nodeId Node id.
-     * @param cls Class of a returned value.
      * @param dflt Default value.
      */
-    public <T> T singleMetric(String metricName, UUID nodeId, Class<T> cls, T dflt) {
+    private  <T> T singleMetric(String metricName, UUID nodeId, T dflt) {
         return metric(metricName, nodeId)
             .values()
             .stream()
@@ -142,7 +169,7 @@ public class IgniteClientHelper implements AutoCloseable {
      * @param consistentIds Consistent ids.
      * @param attrs Attributes.
      */
-    public Map<String, Map<String, Object>> baselineNodesAttributes(Collection<?> consistentIds, String... attrs) {
+    private Map<String, Map<String, Object>> baselineNodesAttributes(Collection<?> consistentIds, String... attrs) {
         List<List<?>> allNodesAttrs = view(BASELINE_NODE_ATTRIBUTES_VIEW, client.cluster().node().id());
 
         List<String> attrsList = List.of(attrs);
@@ -165,33 +192,13 @@ public class IgniteClientHelper implements AutoCloseable {
     }
 
     /**
-     * @param map Map.
-     * @param k K.
-     * @param v V.
-     */
-    // TODO Move to util class or replace by some existing utility method?
-    private <K, V> Map<K, V> append(@Nullable Map<K, V> map, K k, V v) {
-        if (map == null) {
-            Map<K, V> map0 = new HashMap<>();
-            map0.put(k, v);
-
-            return map0;
-        }
-        else {
-            map.put(k, v);
-
-            return map;
-        }
-    }
-
-    /**
      * Partition nodes by state: online, offline, or outside of baseline.
      *
      * @param onlineBaselineNodes Online baseline nodes.
      * @param offlineBaselineNodes Offline baseline nodes.
      * @param nonBaselineNodes Server nodes outside of baseline.
      */
-    public void groupServerNodesByState(Collection<OnlineNodeInfo> onlineBaselineNodes,
+    private void groupServerNodesByState(Collection<OnlineNodeInfo> onlineBaselineNodes,
         Collection<OfflineNodeInfo> offlineBaselineNodes, Set<OnlineNodeInfo> nonBaselineNodes) {
         ClientClusterGroup servers = client.cluster().forServers();
 
@@ -231,7 +238,7 @@ public class IgniteClientHelper implements AutoCloseable {
     private OnlineNodeInfo toNodeInfo(ClusterNode node) {
         return new OnlineNodeInfo(
             node,
-            singleMetric("sys.UpTime", node.id(), Long.class, -1L));
+            singleMetric("sys.UpTime", node.id(), -1L));
     }
 
     /**
@@ -239,7 +246,7 @@ public class IgniteClientHelper implements AutoCloseable {
      *
      * @param offlineConsistentIds Offline nodes consistent ids.
      */
-    public Set<OfflineNodeInfo> offlineByConsistentIds(Collection<?> offlineConsistentIds) {
+    private Set<OfflineNodeInfo> offlineByConsistentIds(Collection<?> offlineConsistentIds) {
         Map<String, Map<String, Object>> attrsMap = baselineNodesAttributes(offlineConsistentIds,
             "org.apache.ignite.ips", "TcpCommunicationSpi.comm.tcp.host.names");
 
@@ -254,14 +261,14 @@ public class IgniteClientHelper implements AutoCloseable {
      *
      */
     // TODO: Is an oldest always a coordinator? With Zookeper SPI?
-    public OnlineNodeInfo coordinator() {
+    private OnlineNodeInfo coordinator() {
         return toNodeInfo(client.cluster().forOldest().node());
     }
 
     /**
      *
      */
-    public Set<OnlineNodeInfo> clientNodes() {
+    private Set<OnlineNodeInfo> clientNodes() {
         return client.cluster().forClients()
             .nodes()
             .stream()
@@ -272,7 +279,7 @@ public class IgniteClientHelper implements AutoCloseable {
     /**
      *
      */
-    public ClusterState clusterState() {
+    private ClusterState clusterState() {
         return client.cluster().state();
     }
 
