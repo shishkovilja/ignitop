@@ -5,7 +5,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-import dev.ignitop.ignite.IgniteManager;
+import dev.ignitop.ignite.IgniteHelper;
 import dev.ignitop.ignite.topology.OfflineNodeInfo;
 import dev.ignitop.ignite.topology.OnlineNodeInfo;
 import dev.ignitop.ignite.topology.TopologyInformation;
@@ -17,7 +17,7 @@ import dev.ignitop.ui.component.impl.Table;
 import dev.ignitop.ui.component.impl.Title;
 import dev.ignitop.ui.updater.ScreenUpdater;
 
-import static dev.ignitop.util.IgnitopUtils.formattedUptime;
+import static dev.ignitop.util.IgniTopUtils.formattedUptime;
 import static org.apache.ignite.cluster.ClusterState.INACTIVE;
 import static org.fusesource.jansi.Ansi.Color.GREEN;
 import static org.fusesource.jansi.Ansi.Color.RED;
@@ -26,21 +26,21 @@ import static org.fusesource.jansi.Ansi.Color.RED;
  *
  */
 public class TopologyInformationUpdater implements ScreenUpdater {
-    /** Ignite manager. */
-    private final IgniteManager igniteMgr;
+    /** Ignite helper. */
+    private final IgniteHelper igniteHelper;
 
     /**
-     * @param igniteMgr Ignite manager.
+     * @param igniteHelper Ignite manager.
      */
-    public TopologyInformationUpdater(IgniteManager igniteMgr) {
-        this.igniteMgr = igniteMgr;
+    public TopologyInformationUpdater(IgniteHelper igniteHelper) {
+        this.igniteHelper = igniteHelper;
     }
 
     /** {@inheritDoc} */
     @Override public Collection<TerminalComponent> components() {
         ArrayList<TerminalComponent> components = new ArrayList<>();
 
-        TopologyInformation topInfo = igniteMgr.topologyInformation();
+        TopologyInformation topInfo = igniteHelper.topologyInformation();
 
         components.add(new Title("Topology"));
 
