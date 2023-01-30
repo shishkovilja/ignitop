@@ -105,7 +105,7 @@ public class Label implements TerminalComponent {
 
             ansi.bold()
                 .a(String.valueOf(obj))
-                .boldOff();
+                .reset(); // Reset style and color
 
             return this;
         }
@@ -114,7 +114,8 @@ public class Label implements TerminalComponent {
         public Builder normal(Object obj) {
             addWhitespaceIfNecessary();
 
-            ansi.a(String.valueOf(obj));
+            ansi.a(String.valueOf(obj))
+                .reset(); // Reset style and color
 
             return this;
         }
@@ -125,7 +126,7 @@ public class Label implements TerminalComponent {
 
             ansi.a(Ansi.Attribute.UNDERLINE)
                 .a(String.valueOf(obj))
-                .a(Ansi.Attribute.UNDERLINE_OFF);
+                .reset(); // Reset style and color
 
             return this;
         }

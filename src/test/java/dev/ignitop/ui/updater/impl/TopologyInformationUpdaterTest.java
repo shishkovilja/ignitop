@@ -25,6 +25,9 @@ import static java.lang.System.lineSeparator;
 import static org.apache.ignite.cluster.ClusterState.ACTIVE;
 import static org.apache.ignite.cluster.ClusterState.ACTIVE_READ_ONLY;
 import static org.apache.ignite.cluster.ClusterState.INACTIVE;
+import static org.fusesource.jansi.Ansi.Color.GREEN;
+import static org.fusesource.jansi.Ansi.Color.RED;
+import static org.fusesource.jansi.Ansi.ansi;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -83,8 +86,8 @@ class TopologyInformationUpdaterTest {
      *
      */
     @Test
-    void components_5online2Offline4NonBaseline_activeReadOnly_rebalanced() {
-        check(5, 2, 4, 0, 21, ACTIVE_READ_ONLY, true);
+    void components_5online2Offline4NonBaseline_activeReadOnly_notRebalanced() {
+        check(5, 2, 4, 0, 21, ACTIVE_READ_ONLY, false);
     }
 
     /**
@@ -111,23 +114,55 @@ class TopologyInformationUpdaterTest {
 
         TerminalComponent verAndCrdLbl = iter.next();
 
-        assertTrue(renderToString(verAndCrdLbl, 400).contains("Ignite version: "));
+        assertTrue(renderToString(verAndCrdLbl, 400).contains("Ignite version:"));
         assertTrue(renderToString(verAndCrdLbl, 400).contains(IGNITE_VERSION.toString()));
 
         OnlineNodeInfo crd = onlineBaselineNodes.get(0);
         assertTrue(renderToString(verAndCrdLbl, 400).contains(String.valueOf(crd.consistentId())));
         assertTrue(renderToString(verAndCrdLbl, 400).contains(String.valueOf(crd.hostNames())));
 
-        TerminalComponent topVerAndStateLbl = iter.next();
-
-        assertTrue(renderToString(topVerAndStateLbl, 400).contains(String.valueOf(topVer)));
-        assertTrue(renderToString(topVerAndStateLbl, 400).contains(String.valueOf(clusterState)));
-        assertTrue(renderToString(topVerAndStateLbl, 400).contains(String.valueOf(rebalanced)));
+        checkTopologyAndStateLabel(iter.next(), topVer, clusterState, rebalanced);
 
         checkTable("Online baseline nodes", onlineCnt, topInfo::onlineBaselineNodes, this::validateOnlineNode, iter);
         checkTable("Offline baseline nodes", offlineCnt, topInfo::offlineBaselineNodes, this::validateOfflineNode, iter);
         checkTable("Non-baseline server nodes", nonBaselineCnt, topInfo::nonBaselineNodes, this::validateOnlineNode, iter);
         checkTable("Client nodes", clientsCnt, topInfo::clientNodes, this::validateOnlineNode, iter);
+    }
+
+    /**
+     * @param component Component, topology version and state label expected.
+     * @param topVer Topology version.
+     * @param clusterState Cluster state.
+     * @param rebalanced Rebalanced.
+     */
+    private static void checkTopologyAndStateLabel(TerminalComponent component, int topVer, ClusterState clusterState,
+        boolean rebalanced) {
+        String renderedLbl = renderToString(component, 400);
+
+        String expStr = ansi().a("State:")
+            .reset()
+            .a(" ")
+            .fg(clusterState == INACTIVE ? RED : GREEN)
+            .bold()
+            .a(clusterState)
+            .reset()
+            .a("  Topology version:")
+            .reset()
+            .a(" ")
+            .bold()
+            .a(topVer)
+            .reset()
+            .a("  Rebalanced:")
+            .reset()
+            .a(" ")
+            .fg(rebalanced ? GREEN : RED)
+            .bold()
+            .a(rebalanced)
+            .reset()
+            .reset()
+            .toString() + lineSeparator();
+
+        assertEquals(expStr, renderedLbl, "Unexpected rendered cluster state label");
     }
 
     /**
