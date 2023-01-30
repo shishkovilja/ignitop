@@ -26,6 +26,9 @@ public class Table implements TerminalComponent {
     /** Header widths. */
     private final List<Integer> hdrWidths;
 
+    /** Header widths sum. */
+    private final int hdrWidthSum;
+
     /** Column widths. */
     private final List<Integer> columnWidths;
 
@@ -37,12 +40,17 @@ public class Table implements TerminalComponent {
      * @param rows Rows.
      */
     public Table(List<String> hdr, List<List<?>> rows) {
+        if (hdr.isEmpty())
+            throw new IllegalArgumentException("Table columns headers list must not be empty");
+
         this.hdr = Collections.unmodifiableList(hdr);
         this.rows = Collections.unmodifiableList(rows);
 
         hdrWidths = hdr.stream()
-            .map(o -> String.valueOf(o).length() + CELLS_GAP)
+            .map(o -> String.valueOf(o).length())
             .collect(Collectors.toUnmodifiableList());
+
+        hdrWidthSum = hdrWidths.stream().mapToInt(i -> i).sum();
 
         // Pre-fill column widths by header length.
         columnWidths = new ArrayList<>(hdrWidths);
@@ -55,6 +63,11 @@ public class Table implements TerminalComponent {
      */
     private void calculateContentWidth() {
         for (List<?> row : rows) {
+            if (row.size() != hdr.size()) {
+                throw new IllegalArgumentException("Row elements count does not correspond header elements count: " +
+                    "[rowSize=" + row.size() + ", hdrSize=" + hdr.size() + "]");
+            }
+
             for (int i = 0; i < row.size(); i++) {
                 Object cell = row.get(i);
 
@@ -76,6 +89,8 @@ public class Table implements TerminalComponent {
     @Override public void render(int width, PrintStream out) {
         int contentWidthDelta = contentWidth - width;
 
+        boolean dontShrinkHeaders = hdrWidthSum < width;
+
         int remainingDelta = contentWidthDelta;
 
         for (int i = 0; i < columnWidths.size(); i++) {
@@ -84,13 +99,12 @@ public class Table implements TerminalComponent {
             int columnSizeDelta = contentWidthDelta * oldWidth / contentWidth;
 
             if (columnSizeDelta == 0)
-                columnSizeDelta = contentWidthDelta < 0 ? -1 : 1;
-
+                columnSizeDelta = Integer.compare(contentWidthDelta, 0);
 
             int newWidth = oldWidth - columnSizeDelta;
 
-            if (newWidth < hdrWidths.get(i))
-                newWidth = hdrWidths.get(i);
+            if (dontShrinkHeaders && newWidth < hdrWidths.get(i) + CELLS_GAP)
+                newWidth = hdrWidths.get(i) + CELLS_GAP;
 
             remainingDelta -= oldWidth - newWidth;
 
@@ -138,5 +152,19 @@ public class Table implements TerminalComponent {
 
         out.printf(hdrFmtStr, columnNames);
         out.println();
+    }
+
+    /**
+     * @return Table header.
+     */
+    public List<String> header() {
+        return hdr;
+    }
+
+    /**
+     * @return Table rows.
+     */
+    public List<List<?>> rows() {
+        return rows;
     }
 }

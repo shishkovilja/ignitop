@@ -30,7 +30,7 @@ public class Title implements TerminalComponent {
             text0 = text0.substring(0, width);
 
         int leftMarginSize = delta / 2;
-        int rigthMarginSize = Math.max(0, width - leftMarginSize - text0.length());
+        int rigthMarginSize = Math.max(0, delta - leftMarginSize);
 
         out.println(ansi()
             .fg(fg())
@@ -81,6 +81,7 @@ public class Title implements TerminalComponent {
 
     /** {@inheritDoc} */
     @Override public int contentWidth() {
-        return text.length();
+        // Including left and right brackets
+        return text.length() + leftBracket().length() + rightBracket().length();
     }
 }

@@ -27,7 +27,7 @@ public class OnlineNodeInfo {
     private final Collection<String> hostNames;
 
     /** Addresses. */
-    private final Collection<?> addresses;
+    private final Collection<String> addresses;
 
     /** Uptime. */
     private final long upTime;
@@ -85,7 +85,7 @@ public class OnlineNodeInfo {
     /**
      *
      */
-    public Collection<?> addresses() {
+    public Collection<String> addresses() {
         return Collections.unmodifiableCollection(addresses);
     }
 
