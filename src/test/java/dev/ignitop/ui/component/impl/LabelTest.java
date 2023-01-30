@@ -11,7 +11,8 @@ import org.junit.jupiter.api.Test;
 import static dev.ignitop.ui.Terminal.DEFAULT_TERMINAL_WIDTH;
 import static java.lang.System.lineSeparator;
 import static org.fusesource.jansi.Ansi.Attribute.UNDERLINE;
-import static org.fusesource.jansi.Ansi.Attribute.UNDERLINE_OFF;
+import static org.fusesource.jansi.Ansi.Color.BLUE;
+import static org.fusesource.jansi.Ansi.Color.GREEN;
 import static org.fusesource.jansi.Ansi.Color.RED;
 import static org.fusesource.jansi.Ansi.ansi;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,7 +41,7 @@ class LabelTest {
      */
     @Test
     void singleBold() {
-        check(Label::bold, s -> ansi().bold().a(s).boldOff().reset());
+        check(Label::bold, s -> ansi().bold().a(s).reset());
     }
 
     /**
@@ -56,7 +57,7 @@ class LabelTest {
      */
     @Test
     void singleUnderline() {
-        check(Label::underline, s -> ansi().a(UNDERLINE).a(s).a(UNDERLINE_OFF).reset());
+        check(Label::underline, s -> ansi().a(UNDERLINE).a(s).reset());
     }
 
     /**
@@ -64,7 +65,7 @@ class LabelTest {
      */
     @Test
     void singleSpaces() {
-        check(s -> Label.spaces(3), s -> ansi().a("   ").reset());
+        check(s -> Label.spaces(3), s -> ansi().a("   "));
     }
 
     /**
@@ -83,15 +84,23 @@ class LabelTest {
         check(
             s -> Label.color(RED)
                 .normal(s)
+                .color(GREEN)
                 .bold(s)
                 .spaces(2)
+                .color(BLUE)
                 .underline(s),
             s -> ansi().fgRed()
                 .a(s)
+                .reset()
                 .a(' ')
-                .bold().a(s).boldOff()
+                .fgGreen()
+                .bold()
+                .a(s)
+                .reset()
                 .a("  ")
-                .a(UNDERLINE).a(s).a(UNDERLINE_OFF)
+                .fgBlue()
+                .a(UNDERLINE)
+                .a(s)
                 .reset()
         );
     }
@@ -121,7 +130,8 @@ class LabelTest {
     private void check(Function<String, Label.Builder> lblBuilderFunc, Function<String, Ansi> ansiBuilderFunc) {
         String text = "text";
 
-        String expectedText = ansiBuilderFunc.apply(text).toString();
+        String expectedText = ansiBuilderFunc.apply(text).reset().toString();
+
         Label lbl = lblBuilderFunc.apply(text).build();
 
         String renderedText;
