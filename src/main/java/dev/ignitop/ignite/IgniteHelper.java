@@ -140,7 +140,7 @@ public class IgniteHelper implements AutoCloseable {
     private Map<String, ?> metric(String metricName, UUID nodeId) {
         return (Map<String, ?>)executeTask(
             VisorMetricTask.class.getName(),
-            new VisorMetricTaskArg(metricName),
+            new VisorMetricTaskArg(metricName, null, -1),
             nodeId);
     }
 
