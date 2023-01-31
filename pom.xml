@@ -36,6 +36,13 @@
     </license>
   </licenses>
 
+  <repositories>
+    <repository>
+      <id>Apache Snapshots</id>
+      <url>https://repository.apache.org/content/repositories/snapshots</url>
+    </repository>
+  </repositories>
+
   <developers>
     <developer>
       <id>shishkovilja</id>
