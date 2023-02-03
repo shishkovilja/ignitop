@@ -17,12 +17,16 @@
 package dev.ignitop.ignite;
 
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
 import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import dev.ignitop.ignite.topology.OfflineNodeInfo;
 import dev.ignitop.ignite.topology.OnlineNodeInfo;
 import dev.ignitop.ignite.topology.TopologyInformation;
 import org.apache.ignite.cluster.ClusterNode;
@@ -40,6 +44,8 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
+import static java.util.Collections.emptySortedMap;
+import static java.util.Comparator.comparing;
 import static org.apache.ignite.internal.util.IgniteUtils.MB;
 
 /**
@@ -106,73 +112,144 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
      *
      */
     @Test
-    public void testTopologyInformation() {
+    public void testTopologyInformation() throws Exception {
         try (IgniteHelper igniteHelper = new IgniteHelper(ADDRESSES)) {
-            checkTopologyInfo(igniteHelper, SERVERS_COUNT, SERVERS_COUNT, SERVERS_COUNT, SERVERS_COUNT,
+            checkTopologyInfo(igniteHelper, SERVERS_COUNT, emptySortedMap(), 0, 0,
+                ClusterState.ACTIVE, true);
+
+            if (persistenceEnabled)
+                checkPersistent(igniteHelper);
+            else
+                checkNonPersistent(igniteHelper);
+        }
+    }
+
+    private void checkPersistent(IgniteHelper igniteHelper) throws Exception {
+        SortedMap<String, List<String>> offlineInfos = new TreeMap<>();
+
+        int stopCnt = 3;
+
+        for (int i = 1; i <= stopCnt; i++) {
+            int stopIdx = SERVERS_COUNT - i;
+
+            ClusterNode stoppingNode = grid(stopIdx).localNode();
+
+            offlineInfos.put(stoppingNode.consistentId().toString(), List.of(stoppingNode.hostNames().toString(),
+                stoppingNode.addresses().toString()));
+
+            stopGrid(stopIdx);
+
+            checkTopologyInfo(igniteHelper, stopIdx, offlineInfos, 0, 0,
                 ClusterState.ACTIVE, true);
         }
+
+        int nonBaselineCnt = 2;
+
+        startGridsMultiThreaded(SERVERS_COUNT, nonBaselineCnt);
+
+        waitForTopology(SERVERS_COUNT - stopCnt + nonBaselineCnt);
+
+        checkTopologyInfo(igniteHelper, SERVERS_COUNT - stopCnt, offlineInfos, nonBaselineCnt, 0,
+            ClusterState.ACTIVE, true);
+
+        int clientsCnt = 2;
+
+        startClientGridsMultiThreaded(SERVERS_COUNT + nonBaselineCnt, clientsCnt);
+
+        checkTopologyInfo(igniteHelper, SERVERS_COUNT - stopCnt, offlineInfos, nonBaselineCnt, clientsCnt,
+            ClusterState.ACTIVE, true);
+    }
+
+    private void checkNonPersistent(IgniteHelper igniteHelper) throws Exception {
+        int stopCnt = 3;
+
+        for (int i = 1; i <= stopCnt; i++) {
+            int stopIdx = SERVERS_COUNT - i;
+
+            stopGrid(stopIdx);
+
+            checkTopologyInfo(igniteHelper, stopIdx, emptySortedMap(), 0, 0,
+                ClusterState.ACTIVE, true);
+        }
+
+        int clientsCnt = 2;
+
+        startClientGridsMultiThreaded(SERVERS_COUNT - stopCnt, clientsCnt);
+
+        checkTopologyInfo(igniteHelper, SERVERS_COUNT - stopCnt, emptySortedMap(), 0, clientsCnt,
+            ClusterState.ACTIVE, true);
     }
 
     /**
      * @param igniteHelper Ignite helper.
-     * @param onlineEndExclusive Online end exclusive.
-     * @param offlineEndExclusive Offline end exclusive.
-     * @param nonBaselineEndExclusive Non baseline end exclusive.
-     * @param clientsEndExclusive Clients end exclusive.
+     * @param onlineCnt Online count.
+     * @param expOfflineInfo Exp offline info.
+     * @param nonBaselineCnt Non baseline count.
+     * @param clientsCnt Clients count.
      * @param clusterState Cluster state.
      * @param rebalanced Rebalanced.
      */
-    private void checkTopologyInfo(IgniteHelper igniteHelper, int onlineEndExclusive, int offlineEndExclusive,
-        int nonBaselineEndExclusive, int clientsEndExclusive, ClusterState clusterState, boolean rebalanced) {
+    private void checkTopologyInfo(
+        IgniteHelper igniteHelper,
+        int onlineCnt,
+        SortedMap<String, List<String>> expOfflineInfo,
+        int nonBaselineCnt,
+        int clientsCnt,
+        ClusterState clusterState,
+        boolean rebalanced)
+    {
+        int offlineEndExclusive = onlineCnt + expOfflineInfo.size();
+        int nonBaselineEndExclusive = offlineEndExclusive + nonBaselineCnt;
+        int clientsEndExclusive = nonBaselineEndExclusive + clientsCnt;
+
         TopologyInformation topInfo = igniteHelper.topologyInformation();
 
         assertEquals("Unexpected 'clusterState'", clusterState, topInfo.clusterState());
 
         assertEquals("Unexpected 'rebalanced'", rebalanced, topInfo.rebalanced());
 
-        verifyOnlineNodes(ignitesByOrder(0, onlineEndExclusive),
-            infosByOrder(topInfo.onlineBaselineNodes()), false);
+        verifyOnlineNodes(ignitesByConsistentId(0, onlineCnt),
+            infosByConsistentId(topInfo.onlineBaselineNodes()), false);
 
-//        verifyOnlineNodes(ignitesByOrder(onlineEndExclusive, offlineEndExclusive),
-//            infosByOrder(topInfo.onlineBaselineNodes()), false);
+        verifyOfflineNodes(expOfflineInfo, offlineByConsistentId(topInfo.offlineBaselineNodes()));
 
-        verifyOnlineNodes(ignitesByOrder(offlineEndExclusive, nonBaselineEndExclusive),
-            infosByOrder(topInfo.nonBaselineNodes()), false);
+        verifyOnlineNodes(ignitesByConsistentId(offlineEndExclusive, nonBaselineEndExclusive),
+            infosByConsistentId(topInfo.nonBaselineNodes()), false);
 
-        verifyOnlineNodes(ignitesByOrder(nonBaselineEndExclusive, clientsEndExclusive),
-            infosByOrder(topInfo.clientNodes()), true);
+        verifyOnlineNodes(ignitesByConsistentId(nonBaselineEndExclusive, clientsEndExclusive),
+            infosByConsistentId(topInfo.clientNodes()), true);
     }
 
     /**
      * @param startInclusive Start inclusive.
      * @param endExclusive End exclusive.
      */
-    private TreeSet<IgniteEx> ignitesByOrder(int startInclusive, int endExclusive) {
+    private TreeSet<IgniteEx> ignitesByConsistentId(int startInclusive, int endExclusive) {
         return IntStream.range(startInclusive, endExclusive)
             .mapToObj(this::grid)
             .collect(Collectors.toCollection(() ->
-                new TreeSet<>(Comparator.comparingLong(ign -> ign.localNode().order()))));
+                new TreeSet<>(comparing(ign -> String.valueOf(ign.localNode().consistentId())))));
     }
 
     /**
-     * @param nodeInfos Node infos.
+     * @param infos Collection of OnlineNodeInfo.
      */
-    private SortedSet<OnlineNodeInfo> infosByOrder(Collection<OnlineNodeInfo> nodeInfos) {
-        SortedSet<OnlineNodeInfo> infosByOrder = new TreeSet<>(Comparator.comparingLong(OnlineNodeInfo::order));
+    private SortedSet<OnlineNodeInfo> infosByConsistentId(Collection<OnlineNodeInfo> infos) {
+        SortedSet<OnlineNodeInfo> infosByConsistentId = new TreeSet<>(comparing(info -> String.valueOf(info.consistentId())));
 
-        infosByOrder.addAll(nodeInfos);
+        infosByConsistentId.addAll(infos);
 
-        return infosByOrder;
+        return infosByConsistentId;
     }
 
     /**
      * @param ignites Ignites.
-     * @param nodeInfos Node infos.
+     * @param infos Node infos.
      * @param clients Clients.
      */
-    private void verifyOnlineNodes(SortedSet<IgniteEx> ignites, SortedSet<OnlineNodeInfo> nodeInfos, boolean clients) {
+    private void verifyOnlineNodes(SortedSet<IgniteEx> ignites, SortedSet<OnlineNodeInfo> infos, boolean clients) {
         Iterator<IgniteEx> ignitesIter = ignites.iterator();
-        Iterator<OnlineNodeInfo> nodeInfosIter = nodeInfos.iterator();
+        Iterator<OnlineNodeInfo> nodeInfosIter = infos.iterator();
 
         while (ignitesIter.hasNext()) {
             IgniteEx ignite = ignitesIter.next();
@@ -193,5 +270,29 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
         }
 
         assertFalse("Unproccessed OnlineNodeInfo was found", nodeInfosIter.hasNext());
+    }
+
+    private void verifyOfflineNodes(SortedMap<String, List<String>> expOfflineInfo, SortedSet<OfflineNodeInfo> infos) {
+        Iterator<Map.Entry<String, List<String>>> expIter = expOfflineInfo.entrySet().iterator();
+        Iterator<OfflineNodeInfo> nodeInfosIter = infos.iterator();
+
+        while (expIter.hasNext()) {
+            Map.Entry<String, List<String>> expInfo = expIter.next();
+            OfflineNodeInfo nodeInfo = nodeInfosIter.next();
+
+            assertEquals("Unexpected 'consistentId'", expInfo.getKey(), nodeInfo.consistentId());
+            assertEquals("Unexpected 'hostNames'", expInfo.getValue().get(0), nodeInfo.hostNames());
+            assertEquals("Unexpected 'addresses'", expInfo.getValue().get(1), nodeInfo.addresses());
+        }
+
+        assertFalse("Unproccessed OfflineNodeInfo was found", nodeInfosIter.hasNext());
+    }
+
+    private SortedSet<OfflineNodeInfo> offlineByConsistentId(Collection<OfflineNodeInfo> infos) {
+        SortedSet<OfflineNodeInfo> infosByConsistentId = new TreeSet<>(comparing(info -> String.valueOf(info.consistentId())));
+
+        infosByConsistentId.addAll(infos);
+
+        return infosByConsistentId;
     }
 }

@@ -28,3 +28,6 @@ target/
 # Intellij Idea files
 .idea/
 *.iml
+
+# Ignite work directories
+/ignitop-integration-tests/ignite/
