@@ -264,12 +264,12 @@ public class IgniteHelper implements AutoCloseable {
      */
     private Set<OfflineNodeInfo> offlineByConsistentIds(Collection<?> offlineConsistentIds) {
         Map<String, Map<String, Object>> attrsMap = baselineNodesAttributes(offlineConsistentIds,
-            "org.apache.ignite.ips", "TcpCommunicationSpi.comm.tcp.host.names");
+            "TcpCommunicationSpi.comm.tcp.host.names", "TcpCommunicationSpi.comm.tcp.addrs");
 
         return attrsMap.entrySet()
             .stream()
-            .map(e -> new OfflineNodeInfo(e.getKey(), e.getValue().get("org.apache.ignite.ips"),
-                e.getValue().get("TcpCommunicationSpi.comm.tcp.host.names")))
+            .map(e -> new OfflineNodeInfo(e.getKey(), e.getValue().get("TcpCommunicationSpi.comm.tcp.host.names"),
+                e.getValue().get("TcpCommunicationSpi.comm.tcp.addrs")))
             .collect(Collectors.toSet());
     }
 
