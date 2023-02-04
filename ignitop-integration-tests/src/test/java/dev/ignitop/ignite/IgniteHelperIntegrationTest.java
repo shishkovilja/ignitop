@@ -46,6 +46,9 @@ import org.junit.runners.Parameterized.Parameters;
 
 import static java.util.Collections.emptySortedMap;
 import static java.util.Comparator.comparing;
+import static org.apache.ignite.cluster.ClusterState.ACTIVE;
+import static org.apache.ignite.cluster.ClusterState.ACTIVE_READ_ONLY;
+import static org.apache.ignite.cluster.ClusterState.INACTIVE;
 import static org.apache.ignite.internal.util.IgniteUtils.MB;
 
 /**
@@ -96,7 +99,9 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
         startGrids(SERVERS_COUNT);
 
         if (persistenceEnabled)
-            grid(0).cluster().state(ClusterState.ACTIVE);
+            grid(0).cluster().state(ACTIVE);
+
+        awaitPartitionMapExchange();
     }
 
     /** {@inheritDoc} */
@@ -115,15 +120,22 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
     public void testTopologyInformation() throws Exception {
         try (IgniteHelper igniteHelper = new IgniteHelper(ADDRESSES)) {
             checkTopologyInfo(igniteHelper, SERVERS_COUNT, emptySortedMap(), 0, 0,
-                ClusterState.ACTIVE, true);
+                ACTIVE, true);
 
             if (persistenceEnabled)
                 checkPersistent(igniteHelper);
             else
                 checkNonPersistent(igniteHelper);
+
+            checkClusterStateChange(igniteHelper, ACTIVE_READ_ONLY, true);
+            checkClusterStateChange(igniteHelper, INACTIVE, false);
+            checkClusterStateChange(igniteHelper, ACTIVE, true);
         }
     }
 
+    /**
+     * @param igniteHelper Ignite helper.
+     */
     private void checkPersistent(IgniteHelper igniteHelper) throws Exception {
         SortedMap<String, List<String>> offlineInfos = new TreeMap<>();
 
@@ -140,7 +152,7 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
             stopGrid(stopIdx);
 
             checkTopologyInfo(igniteHelper, stopIdx, offlineInfos, 0, 0,
-                ClusterState.ACTIVE, true);
+                ACTIVE, true);
         }
 
         int nonBaselineCnt = 2;
@@ -150,16 +162,21 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
         waitForTopology(SERVERS_COUNT - stopCnt + nonBaselineCnt);
 
         checkTopologyInfo(igniteHelper, SERVERS_COUNT - stopCnt, offlineInfos, nonBaselineCnt, 0,
-            ClusterState.ACTIVE, true);
+            ACTIVE, true);
 
         int clientsCnt = 2;
 
         startClientGridsMultiThreaded(SERVERS_COUNT + nonBaselineCnt, clientsCnt);
 
+        waitForTopology(SERVERS_COUNT - stopCnt + nonBaselineCnt + clientsCnt);
+
         checkTopologyInfo(igniteHelper, SERVERS_COUNT - stopCnt, offlineInfos, nonBaselineCnt, clientsCnt,
-            ClusterState.ACTIVE, true);
+            ACTIVE, true);
     }
 
+    /**
+     * @param igniteHelper Ignite helper.
+     */
     private void checkNonPersistent(IgniteHelper igniteHelper) throws Exception {
         int stopCnt = 3;
 
@@ -169,25 +186,27 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
             stopGrid(stopIdx);
 
             checkTopologyInfo(igniteHelper, stopIdx, emptySortedMap(), 0, 0,
-                ClusterState.ACTIVE, true);
+                ACTIVE, true);
         }
 
         int clientsCnt = 2;
 
         startClientGridsMultiThreaded(SERVERS_COUNT - stopCnt, clientsCnt);
 
+        waitForTopology(SERVERS_COUNT - stopCnt + clientsCnt);
+
         checkTopologyInfo(igniteHelper, SERVERS_COUNT - stopCnt, emptySortedMap(), 0, clientsCnt,
-            ClusterState.ACTIVE, true);
+            ACTIVE, true);
     }
 
     /**
      * @param igniteHelper Ignite helper.
-     * @param onlineCnt Online count.
-     * @param expOfflineInfo Exp offline info.
-     * @param nonBaselineCnt Non baseline count.
-     * @param clientsCnt Clients count.
-     * @param clusterState Cluster state.
-     * @param rebalanced Rebalanced.
+     * @param onlineCnt Expected online nodes count.
+     * @param expOfflineInfo Expected offline node infos.
+     * @param nonBaselineCnt Expected non-baseline nodes count.
+     * @param clientsCnt Expected client nodes count.
+     * @param clusterState Expected cluster state.
+     * @param rebalanced Expected rebalanced state.
      */
     private void checkTopologyInfo(
         IgniteHelper igniteHelper,
@@ -205,41 +224,35 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
         TopologyInformation topInfo = igniteHelper.topologyInformation();
 
         assertEquals("Unexpected 'clusterState'", clusterState, topInfo.clusterState());
-
         assertEquals("Unexpected 'rebalanced'", rebalanced, topInfo.rebalanced());
 
         verifyOnlineNodes(ignitesByConsistentId(0, onlineCnt),
-            infosByConsistentId(topInfo.onlineBaselineNodes()), false);
+            onlineByConsistentId(topInfo.onlineBaselineNodes()), false);
 
         verifyOfflineNodes(expOfflineInfo, offlineByConsistentId(topInfo.offlineBaselineNodes()));
 
         verifyOnlineNodes(ignitesByConsistentId(offlineEndExclusive, nonBaselineEndExclusive),
-            infosByConsistentId(topInfo.nonBaselineNodes()), false);
+            onlineByConsistentId(topInfo.nonBaselineNodes()), false);
 
         verifyOnlineNodes(ignitesByConsistentId(nonBaselineEndExclusive, clientsEndExclusive),
-            infosByConsistentId(topInfo.clientNodes()), true);
+            onlineByConsistentId(topInfo.clientNodes()), true);
     }
 
     /**
-     * @param startInclusive Start inclusive.
-     * @param endExclusive End exclusive.
+     * @param igniteHelper Ignite helper.
+     * @param clusterState Expected cluster state.
+     * @param rebalanced Expected rebalanced state.
      */
-    private TreeSet<IgniteEx> ignitesByConsistentId(int startInclusive, int endExclusive) {
-        return IntStream.range(startInclusive, endExclusive)
-            .mapToObj(this::grid)
-            .collect(Collectors.toCollection(() ->
-                new TreeSet<>(comparing(ign -> String.valueOf(ign.localNode().consistentId())))));
-    }
+    private void checkClusterStateChange(IgniteHelper igniteHelper, ClusterState clusterState, boolean rebalanced)
+        throws InterruptedException {
+        grid(0).cluster().state(clusterState);
 
-    /**
-     * @param infos Collection of OnlineNodeInfo.
-     */
-    private SortedSet<OnlineNodeInfo> infosByConsistentId(Collection<OnlineNodeInfo> infos) {
-        SortedSet<OnlineNodeInfo> infosByConsistentId = new TreeSet<>(comparing(info -> String.valueOf(info.consistentId())));
+        awaitPartitionMapExchange();
 
-        infosByConsistentId.addAll(infos);
+        TopologyInformation topInfo = igniteHelper.topologyInformation();
 
-        return infosByConsistentId;
+        assertEquals("Unexpected 'rebalanced' value", rebalanced, topInfo.rebalanced());
+        assertEquals("Unexpected 'clusterState' value", clusterState, topInfo.clusterState());
     }
 
     /**
@@ -272,6 +285,36 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
         assertFalse("Unproccessed OnlineNodeInfo was found", nodeInfosIter.hasNext());
     }
 
+    /**
+     * Get sorted by a consistentId collection pf test ignite nodes with indexes within specified range.
+     *
+     * @param startInclusive Start inclusive.
+     * @param endExclusive End exclusive.
+     */
+    private TreeSet<IgniteEx> ignitesByConsistentId(int startInclusive, int endExclusive) {
+        return IntStream.range(startInclusive, endExclusive)
+            .mapToObj(this::grid)
+            .collect(Collectors.toCollection(() ->
+                new TreeSet<>(comparing(ign -> String.valueOf(ign.localNode().consistentId())))));
+    }
+
+    /**
+     * Get sorted by a consistentId collection of OnlineNodeInfo.
+     *
+     * @param infos Original collection of OnlineNodeInfo.
+     */
+    private SortedSet<OnlineNodeInfo> onlineByConsistentId(Collection<OnlineNodeInfo> infos) {
+        SortedSet<OnlineNodeInfo> infosByConsistentId = new TreeSet<>(comparing(info -> String.valueOf(info.consistentId())));
+
+        infosByConsistentId.addAll(infos);
+
+        return infosByConsistentId;
+    }
+
+    /**
+     * @param expOfflineInfo Expected offline node infos.
+     * @param infos Actual OfflineNodeInfo collection.
+     */
     private void verifyOfflineNodes(SortedMap<String, List<String>> expOfflineInfo, SortedSet<OfflineNodeInfo> infos) {
         Iterator<Map.Entry<String, List<String>>> expIter = expOfflineInfo.entrySet().iterator();
         Iterator<OfflineNodeInfo> nodeInfosIter = infos.iterator();
@@ -288,6 +331,11 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
         assertFalse("Unproccessed OfflineNodeInfo was found", nodeInfosIter.hasNext());
     }
 
+    /**
+     * Get sorted by a consistentId collection of OfflineNodeInfo.
+     *
+     * @param infos Original coollection of OfflineNodeInfo.
+     */
     private SortedSet<OfflineNodeInfo> offlineByConsistentId(Collection<OfflineNodeInfo> infos) {
         SortedSet<OfflineNodeInfo> infosByConsistentId = new TreeSet<>(comparing(info -> String.valueOf(info.consistentId())));
 
