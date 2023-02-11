@@ -14,19 +14,35 @@
  * limitations under the License.
  */
 
-package dev.ignitop.ui.updater;
+package dev.ignitop.ui.updater.impl;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
+import dev.ignitop.ignite.IgniteHelper;
 import dev.ignitop.ui.component.TerminalComponent;
+import dev.ignitop.ui.updater.ScreenUpdater;
 
 /**
  *
  */
-// TODO: Migrate to Supplier<Collection<Components>> or Function<IgniteManager, Collection<Components>> (https://github.com/shishkovilja/ignitop/issues/42).
-@SuppressWarnings("UnnecessaryModifier")
-public interface ScreenUpdater {
+public class SystemMetricsUpdater implements ScreenUpdater {
+    /** Ignite helper. */
+    private final IgniteHelper igniteHelper;
+
     /**
-     *
+     * @param igniteHelper Ignite helper.
      */
-    public Collection<TerminalComponent> components();
+    public SystemMetricsUpdater(IgniteHelper igniteHelper) {
+        this.igniteHelper = igniteHelper;
+    }
+
+    /** {@inheritDoc} */
+    @Override public Collection<TerminalComponent> components() {
+        List<TerminalComponent> components = new ArrayList<>();
+
+        igniteHelper.systemMetrics();
+
+        return components;
+    }
 }

@@ -16,6 +16,7 @@
 
 package dev.ignitop.ignite;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,7 +25,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import dev.ignitop.ignite.system.SystemMetricsInformation;
 import dev.ignitop.ignite.topology.OfflineNodeInfo;
 import dev.ignitop.ignite.topology.OnlineNodeInfo;
 import dev.ignitop.ignite.topology.TopologyInformation;
@@ -42,6 +45,13 @@ import org.apache.ignite.internal.visor.systemview.VisorSystemViewTaskArg;
 import org.apache.ignite.internal.visor.systemview.VisorSystemViewTaskResult;
 
 import static dev.ignitop.util.IgniTopUtils.append;
+import static org.apache.ignite.internal.IgniteKernal.CFG_VIEW;
+import static org.apache.ignite.internal.processors.cache.persistence.DataRegionMetricsImpl.DATAREGION_METRICS_PREFIX;
+import static org.apache.ignite.internal.processors.cache.persistence.DataStorageMetricsImpl.DATASTORAGE_METRIC_PREFIX;
+import static org.apache.ignite.internal.processors.metric.GridMetricManager.CPU_LOAD;
+import static org.apache.ignite.internal.processors.metric.GridMetricManager.GC_CPU_LOAD;
+import static org.apache.ignite.internal.processors.metric.GridMetricManager.SYS_METRICS;
+import static org.apache.ignite.internal.processors.metric.impl.MetricUtils.metricName;
 
 /**
  *
@@ -96,6 +106,71 @@ public class IgniteHelper implements AutoCloseable {
     }
 
     /**
+     *
+     */
+    public Collection<SystemMetricsInformation> systemMetrics() {
+        Collection<ClusterNode> nodes = client.cluster().forServers().nodes();
+
+        ClusterNode randomNode = nodes.iterator().next();
+
+        List<List<?>> cfg = view(CFG_VIEW, randomNode.id());
+
+        Pattern drNameRegex = Pattern.compile("DataStorageConfiguration\\.DefaultDataRegionConfiguration\\.Name|" +
+            "DataStorageConfiguration.DataRegionConfigurations\\[[0-9]+].Name");
+
+        Set<String> drNames = cfg.stream()
+            .filter(l -> drNameRegex.matcher(String.valueOf(l.get(0))).find())
+            .map(l -> String.valueOf(l.get(1)))
+            .collect(Collectors.toSet());
+
+        List<SystemMetricsInformation> metrics = new ArrayList<>(nodes.size());
+
+        Map<String, Float> dataRegionUsagesPercents = new HashMap<>();
+
+        for (ClusterNode node : nodes) {
+            UUID id = node.id();
+
+            Map<String, ?> sysMetrics = metric(SYS_METRICS, id);
+
+            for (String drName : drNames) {
+                long offheapUsedSize = singleMetric(metricName(DATAREGION_METRICS_PREFIX, drName, "OffheapUsedSize"),
+                    id, 0L);
+
+                long maxSize = singleMetric(metricName(DATAREGION_METRICS_PREFIX, drName, "MaxSize"), id, 0L);
+
+                dataRegionUsagesPercents.put(drName, (float)offheapUsedSize / maxSize * 100);
+            }
+
+            double cpuLoad = (double)sysMetrics.get(metricName(SYS_METRICS, CPU_LOAD));
+
+            double loadAverage = Double.parseDouble(String.valueOf(sysMetrics.get(metricName(SYS_METRICS,
+                "SystemLoadAverage"))));
+
+            double gcCpuLoad = (double)sysMetrics.get(metricName(SYS_METRICS, GC_CPU_LOAD));
+
+            long heapUsed = (long)sysMetrics.get(metricName(SYS_METRICS, "memory", "heap", "used"));
+            long heapMax = (long)sysMetrics.get(metricName(SYS_METRICS, "memory", "heap", "max"));
+
+            long dataStorageSize = singleMetric(metricName(DATASTORAGE_METRIC_PREFIX, "StorageSize"), id, 0L);
+
+            SystemMetricsInformation sysMetricsInfo = new SystemMetricsInformation(
+                node.consistentId(),
+                node.hostNames(),
+                cpuLoad * 100,
+                // Strange double metric to string conversion in Ignite
+                loadAverage,
+                gcCpuLoad,
+                (double)heapUsed / heapMax * 100,
+                dataRegionUsagesPercents,
+                (double)dataStorageSize / 1024 / 1024 / 1024);
+
+            metrics.add(sysMetricsInfo);
+        }
+
+        return metrics;
+    }
+
+    /**
      * Return result of {@link VisorSystemViewTask} execution for a node with a specified id.
      * Expected, that ID is a value, which corresponds to a value returned by a {@link ClusterNode#id()}.
      *
@@ -138,10 +213,12 @@ public class IgniteHelper implements AutoCloseable {
      * @param nodeId Node id.
      */
     private Map<String, ?> metric(String metricName, UUID nodeId) {
-        return (Map<String, ?>)executeTask(
+        Map<String, ?> res = (Map<String, ?>)executeTask(
             VisorMetricTask.class.getName(),
             new VisorMetricTaskArg(metricName, null, -1),
             nodeId);
+
+        return res != null ? res : Map.of();
     }
 
     /**

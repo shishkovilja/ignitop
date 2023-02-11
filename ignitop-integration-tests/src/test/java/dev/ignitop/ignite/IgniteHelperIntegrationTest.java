@@ -26,6 +26,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import dev.ignitop.ignite.system.SystemMetricsInformation;
 import dev.ignitop.ignite.topology.OfflineNodeInfo;
 import dev.ignitop.ignite.topology.OnlineNodeInfo;
 import dev.ignitop.ignite.topology.TopologyInformation;
@@ -65,6 +66,27 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
         .mapToObj(i -> "127.0.0.1:" + (10800 + i))
         .toArray(String[]::new);
 
+    /** Default region max size. */
+    public static final long DEFAULT_REGION_MAX_SIZE = 128 * MB;
+
+    /** First region. */
+    public static final String FIRST_REGION = "first_region";
+
+    /** Second region. */
+    public static final String SECOND_REGION = "second_region";
+
+    /** First region size. */
+    public static final long FIRST_REGION_SIZE = 256 * MB;
+
+    /** First region threshold. */
+    public static final double FIRST_REGION_THRESHOLD = 0.5;
+
+    /** Second region size. */
+    public static final long SECOND_REGION_SIZE = 128 * MB;
+
+    /** Second region threshold. */
+    public static final double SECOND_REGION_THRESHOLD = 0.7;
+
     /** Persistence enabled. */
     @Parameter
     public boolean persistenceEnabled;
@@ -82,12 +104,29 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
         return super.getConfiguration(igniteInstanceName)
             .setConsistentId(igniteInstanceName)
             .setClientConnectorConfiguration(new ClientConnectorConfiguration()
-            .setThinClientConfiguration(new ThinClientConfiguration()
-                .setMaxActiveComputeTasksPerConnection(1)))
-            .setDataStorageConfiguration(new DataStorageConfiguration().setDefaultDataRegionConfiguration(
-                new DataRegionConfiguration()
-                    .setMaxSize(256 * MB)
-                    .setPersistenceEnabled(persistenceEnabled)));
+                .setThinClientConfiguration(new ThinClientConfiguration()
+                    .setMaxActiveComputeTasksPerConnection(1)))
+            .setDataStorageConfiguration(new DataStorageConfiguration()
+                .setDefaultDataRegionConfiguration(
+                    new DataRegionConfiguration()
+                        .setMaxSize(DEFAULT_REGION_MAX_SIZE)
+                        .setPersistenceEnabled(persistenceEnabled)
+                        .setMetricsEnabled(true)
+                )
+                .setDataRegionConfigurations(
+                    new DataRegionConfiguration()
+                        .setName(FIRST_REGION)
+                        .setEvictionThreshold(FIRST_REGION_THRESHOLD)
+                        .setPersistenceEnabled(false)
+                        .setMaxSize(FIRST_REGION_SIZE)
+                        .setMetricsEnabled(true),
+                    new DataRegionConfiguration()
+                        .setName(SECOND_REGION)
+                        .setEvictionThreshold(SECOND_REGION_THRESHOLD)
+                        .setPersistenceEnabled(false)
+                        .setMaxSize(SECOND_REGION_SIZE)
+                        .setMetricsEnabled(true))
+                .setMetricsEnabled(true));
     }
 
     /** {@inheritDoc} */
@@ -130,6 +169,35 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
             checkClusterStateChange(igniteHelper, ACTIVE_READ_ONLY, true);
             checkClusterStateChange(igniteHelper, INACTIVE, false);
             checkClusterStateChange(igniteHelper, ACTIVE, true);
+        }
+    }
+
+    /**
+     *
+     */
+    @Test
+    public void testSystemMetrics() {
+        try (IgniteHelper igniteHelper = new IgniteHelper(ADDRESSES)) {
+            SortedSet<IgniteEx> sortedIgnites = ignitesByConsistentId(0, SERVERS_COUNT);
+
+            SortedSet<SystemMetricsInformation> sysMetricsInfos = systemMetricsByConsistenId(igniteHelper);
+
+            Iterator<SystemMetricsInformation> sysMetricsIter = sysMetricsInfos.iterator();
+
+            for (IgniteEx ignite : sortedIgnites) {
+                SystemMetricsInformation sysMetrics = sysMetricsIter.next();
+
+                assertEquals(ignite.localNode().consistentId(), sysMetrics.consistentId());
+
+                assertTrue(sysMetrics.cpuLoadPercent() >= 0 && sysMetrics.cpuLoadPercent() <= 100);
+                assertTrue(sysMetrics.loadAverage() >= 0);
+                assertTrue(sysMetrics.gcCpuLoadPercent() >= 0 && sysMetrics.gcCpuLoadPercent() <= 100);
+                assertTrue(sysMetrics.heapUsagePercent() > 0 && sysMetrics.gcCpuLoadPercent() <= 100);
+
+                // TODO: add dataregion check & other metrcis during load
+            }
+
+            assertFalse("Unprocessed SystemMetricsInformation was found", sysMetricsIter.hasNext());
         }
     }
 
@@ -261,11 +329,9 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
      * @param clients Clients.
      */
     private void verifyOnlineNodes(SortedSet<IgniteEx> ignites, SortedSet<OnlineNodeInfo> infos, boolean clients) {
-        Iterator<IgniteEx> ignitesIter = ignites.iterator();
         Iterator<OnlineNodeInfo> nodeInfosIter = infos.iterator();
 
-        while (ignitesIter.hasNext()) {
-            IgniteEx ignite = ignitesIter.next();
+        for (IgniteEx ignite : ignites) {
             OnlineNodeInfo nodeInfo = nodeInfosIter.next();
 
             ClusterNode expNode = ignite.localNode();
@@ -309,6 +375,22 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
         infosByConsistentId.addAll(infos);
 
         return infosByConsistentId;
+    }
+
+    /**
+     * Get sorted by a consistentId collection of SystemMetricsInformation.
+     *
+     * @param igniteHelper Ignite helper.
+     */
+    private SortedSet<SystemMetricsInformation> systemMetricsByConsistenId(IgniteHelper igniteHelper) {
+        Collection<SystemMetricsInformation> sysMetrics = igniteHelper.systemMetrics();
+
+        SortedSet<SystemMetricsInformation> sysMetricsByConsistentId = new TreeSet<>(comparing(m ->
+            String.valueOf(m.consistentId())));
+
+        sysMetricsByConsistentId.addAll(sysMetrics);
+
+        return sysMetricsByConsistentId;
     }
 
     /**
