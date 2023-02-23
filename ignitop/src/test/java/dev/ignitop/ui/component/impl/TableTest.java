@@ -17,6 +17,7 @@
 package dev.ignitop.ui.component.impl;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -32,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  *
  */
+// TODO Add test for double values.
 class TableTest {
     /** Wide header. */
     public static final String WIDE_HEADER = "Very very very wide header";
@@ -43,7 +45,7 @@ class TableTest {
     public static final int ROWS_COUNT = 25;
 
     /** Rows. */
-    public static final List<List<?>> ROWS = rows(ROWS_COUNT);
+    public static final List<Object[]> ROWS = rows(ROWS_COUNT);
 
     /** Widest content. It is narrower than {@code WIDE_HEADER}, but wider than {@code NARROW_HEADER}. */
     public static final String WIDEST_CONTENT = "Content [" + (ROWS_COUNT - 1) + ",1]";
@@ -172,11 +174,10 @@ class TableTest {
      */
     @Test
     void render_withNullTableElement() {
-        ArrayList<Object> row = new ArrayList<>();
-        row.add("Cell01");
-        row.add(null);
+        List<Object[]> rows = new ArrayList<>();
+        rows.add(new Object[]{"Cell01", null});
 
-        Table table = new Table(List.of("Header1", "Header2"), List.of(row));
+        Table table = new Table(List.of("Header1", "Header2"), rows);
 
         String renderedTable = TestUtils.renderToString(table, table.contentWidth());
 
@@ -206,7 +207,7 @@ class TableTest {
         assertThrows(IllegalArgumentException.class,
             () -> new Table(
                 List.of("Header0", "Header1"),
-                List.of(List.of("Cell00", "Cell01"), List.of("Cell10", "Cell11", "Cell12"))),
+                List.of(new Object[]{"Cell00", "Cell01"}, new Object[]{"Cell10", "Cell11", "Cell12"})),
             "Row elements count does not correspond header elements count: [rowSize=3, hdrSize=2]");
     }
 
@@ -229,7 +230,7 @@ class TableTest {
 
         List<String> hdr = List.of(narrowHdr, narrowHdr);
 
-        List<List<?>> rows = rows(5);
+        List<Object[]> rows = rows(5);
 
         assertEquals(("Content [x,y]".length() + 2) * 2,
             new Table(hdr, rows).contentWidth());
@@ -244,7 +245,7 @@ class TableTest {
 
         List<String> hdr = List.of(wideHdr, wideHdr);
 
-        List<List<?>> rows = rows(5);
+        List<Object[]> rows = rows(5);
 
         assertEquals((wideHdr.length() + 2) * 2, new Table(hdr, rows).contentWidth());
     }
@@ -252,9 +253,9 @@ class TableTest {
     /**
      * @param rowsCnt Rows count.
      */
-    private static List<List<?>> rows(int rowsCnt) {
+    private static List<Object[]> rows(int rowsCnt) {
         return IntStream.range(0, rowsCnt)
-            .mapToObj(i -> List.of("Content [" + i + ",1]", "Content [" + i + ",2]"))
+            .mapToObj(i -> new Object[]{"Content [" + i + ",1]", "Content [" + i + ",2]"})
             .collect(Collectors.toList());
     }
 
@@ -276,8 +277,8 @@ class TableTest {
 
         rowsWithHdr.add(new ArrayList<>(table.header()));
 
-        for (List<?> row : table.rows()) {
-            rowsWithHdr.add(row.stream()
+        for (Object[] row : table.rows()) {
+            rowsWithHdr.add(Arrays.stream(row)
                 .map(String::valueOf)
                 .collect(Collectors.toList()));
         }

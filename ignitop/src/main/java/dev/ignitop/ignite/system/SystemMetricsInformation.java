@@ -19,6 +19,8 @@ package dev.ignitop.ignite.system;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 /**
  *
@@ -42,8 +44,8 @@ public class SystemMetricsInformation {
     /** Heap usage in percents. */
     private final double heapUsagePercent;
 
-    /** Data regions usages in percents. */
-    private final Map<String, Double> dataRegionUsagesPercents;
+    /** Data regions usages in percents (sorted by data region name). */
+    private final SortedMap<String, Double> dataRegionUsagesPercents;
 
     /** Data storage size in gigabytes. */
     private final double dataStorageSizeGigabytes;
@@ -74,7 +76,10 @@ public class SystemMetricsInformation {
         this.loadAverage = loadAverage;
         this.gcCpuLoadPercent = gcCpuLoadPercent;
         this.heapUsagePercent = heapUsagePercent;
-        this.dataRegionUsagesPercents = Collections.unmodifiableMap(dataRegionUsagesPercents);
+
+        this.dataRegionUsagesPercents = new TreeMap<>(String::compareTo);
+        this.dataRegionUsagesPercents.putAll(dataRegionUsagesPercents);
+
         this.dataStorageSizeGigabytes = dataStorageSizeGigabytes;
     }
 
@@ -124,7 +129,7 @@ public class SystemMetricsInformation {
      * @return Data regions usages in percents.
      */
     public Map<String, Double> dataRegionUsagesPercents() {
-        return dataRegionUsagesPercents;
+        return Collections.unmodifiableSortedMap(dataRegionUsagesPercents);
     }
 
     /**

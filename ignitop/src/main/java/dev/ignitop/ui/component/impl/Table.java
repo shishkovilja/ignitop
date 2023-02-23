@@ -37,7 +37,7 @@ public class Table implements TerminalComponent {
     private final List<String> hdr;
 
     /** Table rows. */
-    private final List<List<?>> rows;
+    private final List<Object[]> rows;
 
     /** Header widths. */
     private final List<Integer> hdrWidths;
@@ -55,12 +55,12 @@ public class Table implements TerminalComponent {
      * @param hdr Header.
      * @param rows Rows.
      */
-    public Table(List<String> hdr, List<List<?>> rows) {
+    public Table(List<String> hdr, List<Object[]> rows) {
         if (hdr.isEmpty())
             throw new IllegalArgumentException("Table columns headers list must not be empty");
 
         this.hdr = Collections.unmodifiableList(hdr);
-        this.rows = Collections.unmodifiableList(rows);
+        this.rows = new ArrayList<>(rows);
 
         hdrWidths = hdr.stream()
             .map(o -> String.valueOf(o).length())
@@ -71,21 +71,29 @@ public class Table implements TerminalComponent {
         // Pre-fill column widths by header length.
         columnWidths = new ArrayList<>(hdrWidths);
 
-        calculateContentWidth();
+        determineContent();
     }
 
     /**
-     *
+     * Determine content:
+     * Replace double values by a string representations with precision 1.
+     * Calculate content width.
      */
-    private void calculateContentWidth() {
-        for (List<?> row : rows) {
-            if (row.size() != hdr.size()) {
+    private void determineContent() {
+        for (Object[] row : rows) {
+            if (row.length != hdr.size()) {
                 throw new IllegalArgumentException("Row elements count does not correspond header elements count: " +
-                    "[rowSize=" + row.size() + ", hdrSize=" + hdr.size() + "]");
+                    "[rowSize=" + row.length + ", hdrSize=" + hdr.size() + "]");
             }
 
-            for (int i = 0; i < row.size(); i++) {
-                Object cell = row.get(i);
+            for (int i = 0; i < row.length; i++) {
+                Object cell = row[i];
+
+                if (cell instanceof Double) {
+                    cell = String.format("%.1f", cell);
+
+                    row[i] = cell;
+                }
 
                 int elementSize = String.valueOf(cell).length();
 
@@ -140,8 +148,8 @@ public class Table implements TerminalComponent {
 
         printHeader(strFormat, out, hdr.toArray());
 
-        for (List<?> row : rows) {
-            out.printf(strFormat, row.toArray());
+        for (Object[] row : rows) {
+            out.printf(strFormat, row);
             out.println();
         }
 
@@ -180,7 +188,7 @@ public class Table implements TerminalComponent {
     /**
      * @return Table rows.
      */
-    public List<List<?>> rows() {
-        return rows;
+    public List<Object[]> rows() {
+        return Collections.unmodifiableList(rows);
     }
 }

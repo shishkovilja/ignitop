@@ -20,7 +20,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import dev.ignitop.ignite.IgniteHelper;
+import dev.ignitop.ignite.system.SystemMetricsInformation;
 import dev.ignitop.ui.component.TerminalComponent;
+import dev.ignitop.ui.component.impl.Table;
 import dev.ignitop.ui.updater.ScreenUpdater;
 
 /**
@@ -41,8 +43,49 @@ public class SystemMetricsUpdater implements ScreenUpdater {
     @Override public Collection<TerminalComponent> components() {
         List<TerminalComponent> components = new ArrayList<>();
 
-        igniteHelper.systemMetrics();
+        Collection<SystemMetricsInformation> sysMetrics = igniteHelper.systemMetrics();
+
+        List<String> hdr = new ArrayList<>(List.of("Consistent ID", "Host names", "Cpu %", "Load avg", "GC CPU %", "Heap %"));
+
+        SystemMetricsInformation randomInfo = sysMetrics.iterator().next();
+
+        // Sorting of data region usages by names is provided by SystemMetricsInformation
+        randomInfo.dataRegionUsagesPercents()
+            .keySet()
+            .forEach(drName -> hdr.add("DR: " + drName + " %"));
+
+        hdr.add("Data storage GB");
+
+        List<Object[]> rows = new ArrayList<>();
+
+        for (SystemMetricsInformation info : sysMetrics)
+            rows.add(toRow(info));
+
+        components.add(new Table(hdr, rows));
 
         return components;
+    }
+
+    /**
+     * Convert SystemMetricsInformation to a row of elements.
+     *
+     * @param info Info.
+     */
+    private Object[] toRow(SystemMetricsInformation info) {
+        List<?> row0 = List.of(
+            info.consistentId(),
+            info.hostNames(),
+            info.cpuLoadPercent(),
+            info.loadAverage(),
+            info.gcCpuLoadPercent(),
+            info.heapUsagePercent());
+
+        List<Object> row = new ArrayList<>(row0);
+
+        row.addAll(info.dataRegionUsagesPercents().values());
+
+        row.add(info.dataStorageSizeGigabytes());
+
+        return row.toArray();
     }
 }
