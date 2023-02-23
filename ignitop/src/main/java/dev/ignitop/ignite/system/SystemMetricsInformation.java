@@ -43,7 +43,7 @@ public class SystemMetricsInformation {
     private final double heapUsagePercent;
 
     /** Data regions usages in percents. */
-    private final Map<String, Float> dataRegionUsagesPercents;
+    private final Map<String, Double> dataRegionUsagesPercents;
 
     /** Data storage size in gigabytes. */
     private final double dataStorageSizeGigabytes;
@@ -65,7 +65,7 @@ public class SystemMetricsInformation {
         double loadAverage,
         double gcCpuLoadPercent,
         double heapUsagePercent,
-        Map<String, Float> dataRegionUsagesPercents,
+        Map<String, Double> dataRegionUsagesPercents,
         double dataStorageSizeGigabytes)
     {
         this.consistentId = consistentId;
@@ -123,7 +123,7 @@ public class SystemMetricsInformation {
     /**
      * @return Data regions usages in percents.
      */
-    public Map<String, Float> dataRegionUsagesPercents() {
+    public Map<String, Double> dataRegionUsagesPercents() {
         return dataRegionUsagesPercents;
     }
 

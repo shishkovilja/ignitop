@@ -30,14 +30,19 @@ import dev.ignitop.ignite.system.SystemMetricsInformation;
 import dev.ignitop.ignite.topology.OfflineNodeInfo;
 import dev.ignitop.ignite.topology.OnlineNodeInfo;
 import dev.ignitop.ignite.topology.TopologyInformation;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.CachePeekMode;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.cluster.ClusterState;
+import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.ClientConnectorConfiguration;
 import org.apache.ignite.configuration.DataRegionConfiguration;
 import org.apache.ignite.configuration.DataStorageConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.configuration.ThinClientConfiguration;
 import org.apache.ignite.internal.IgniteEx;
+import org.apache.ignite.internal.processors.metric.MetricRegistry;
+import org.apache.ignite.spi.metric.LongMetric;
 import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -50,12 +55,15 @@ import static java.util.Comparator.comparing;
 import static org.apache.ignite.cluster.ClusterState.ACTIVE;
 import static org.apache.ignite.cluster.ClusterState.ACTIVE_READ_ONLY;
 import static org.apache.ignite.cluster.ClusterState.INACTIVE;
+import static org.apache.ignite.configuration.DataStorageConfiguration.DFLT_DATA_REG_DEFAULT_NAME;
+import static org.apache.ignite.internal.processors.cache.persistence.DataRegionMetricsImpl.DATAREGION_METRICS_PREFIX;
+import static org.apache.ignite.internal.processors.metric.impl.MetricUtils.metricName;
 import static org.apache.ignite.internal.util.IgniteUtils.MB;
 
 /**
  *
  */
-@SuppressWarnings("resource")
+@SuppressWarnings({"resource", "deprecation"})
 @RunWith(Parameterized.class)
 public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
     /** Servers count. */
@@ -75,17 +83,20 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
     /** Second region. */
     public static final String SECOND_REGION = "second_region";
 
+    /** Data regions list. */
+    public static final List<String> DATA_REGIONS = List.of(DFLT_DATA_REG_DEFAULT_NAME, FIRST_REGION, SECOND_REGION);
+
     /** First region size. */
     public static final long FIRST_REGION_SIZE = 256 * MB;
-
-    /** First region threshold. */
-    public static final double FIRST_REGION_THRESHOLD = 0.5;
 
     /** Second region size. */
     public static final long SECOND_REGION_SIZE = 128 * MB;
 
-    /** Second region threshold. */
-    public static final double SECOND_REGION_THRESHOLD = 0.7;
+    /** First region cache. */
+    public static final String FIRST_REGION_CACHE = "first_region_cache";
+
+    /** Second region cache. */
+    public static final String SECOND_REGION_CACHE = "second_region_cache";
 
     /** Persistence enabled. */
     @Parameter
@@ -116,17 +127,22 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
                 .setDataRegionConfigurations(
                     new DataRegionConfiguration()
                         .setName(FIRST_REGION)
-                        .setEvictionThreshold(FIRST_REGION_THRESHOLD)
                         .setPersistenceEnabled(false)
                         .setMaxSize(FIRST_REGION_SIZE)
                         .setMetricsEnabled(true),
                     new DataRegionConfiguration()
                         .setName(SECOND_REGION)
-                        .setEvictionThreshold(SECOND_REGION_THRESHOLD)
                         .setPersistenceEnabled(false)
                         .setMaxSize(SECOND_REGION_SIZE)
                         .setMetricsEnabled(true))
-                .setMetricsEnabled(true));
+                .setMetricsEnabled(true))
+            .setCacheConfiguration(
+                new CacheConfiguration<>(DEFAULT_CACHE_NAME)
+                    .setDataRegionName(DFLT_DATA_REG_DEFAULT_NAME),
+                new CacheConfiguration<>(FIRST_REGION_CACHE)
+                    .setDataRegionName(FIRST_REGION),
+                new CacheConfiguration<>(SECOND_REGION_CACHE)
+                    .setDataRegionName(SECOND_REGION));
     }
 
     /** {@inheritDoc} */
@@ -178,26 +194,48 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
     @Test
     public void testSystemMetrics() {
         try (IgniteHelper igniteHelper = new IgniteHelper(ADDRESSES)) {
-            SortedSet<IgniteEx> sortedIgnites = ignitesByConsistentId(0, SERVERS_COUNT);
+            int itersCnt = 5;
 
-            SortedSet<SystemMetricsInformation> sysMetricsInfos = systemMetricsByConsistenId(igniteHelper);
+            for (int i = 0; i < itersCnt; i++) {
+                for (String cacheName : grid(0).cacheNames()) {
+                    IgniteCache<Object, Object> cache = grid(0).cache(cacheName);
 
-            Iterator<SystemMetricsInformation> sysMetricsIter = sysMetricsInfos.iterator();
+                    int cacheSz = cache.size(CachePeekMode.PRIMARY);
 
-            for (IgniteEx ignite : sortedIgnites) {
-                SystemMetricsInformation sysMetrics = sysMetricsIter.next();
+                    IntStream.range(cacheSz, cacheSz + 1024).forEach(j -> cache.put(j, j));
+                }
 
-                assertEquals(ignite.localNode().consistentId(), sysMetrics.consistentId());
+                SortedSet<IgniteEx> sortedIgnites = ignitesByConsistentId(0, SERVERS_COUNT);
 
-                assertTrue(sysMetrics.cpuLoadPercent() >= 0 && sysMetrics.cpuLoadPercent() <= 100);
-                assertTrue(sysMetrics.loadAverage() >= 0);
-                assertTrue(sysMetrics.gcCpuLoadPercent() >= 0 && sysMetrics.gcCpuLoadPercent() <= 100);
-                assertTrue(sysMetrics.heapUsagePercent() > 0 && sysMetrics.gcCpuLoadPercent() <= 100);
+                SortedSet<SystemMetricsInformation> sysMetricsInfos = systemMetricsByConsistenId(igniteHelper);
 
-                // TODO: add dataregion check & other metrcis during load
+                Iterator<SystemMetricsInformation> sysMetricsIter = sysMetricsInfos.iterator();
+
+                for (IgniteEx ignite : sortedIgnites) {
+                    SystemMetricsInformation sysMetrics = sysMetricsIter.next();
+
+                    assertEquals("Unexpected 'consistentId'", ignite.localNode().consistentId(),
+                        sysMetrics.consistentId());
+
+                    assertTrue("Unexpected 'cpuLoadPercent'",
+                        sysMetrics.cpuLoadPercent() >= 0 && sysMetrics.cpuLoadPercent() <= 100);
+
+                    assertTrue("Unexpected 'loadAverage'", sysMetrics.loadAverage() >= 0);
+
+                    assertTrue("Unexpected 'gcCpuLoadPercent'",
+                        sysMetrics.gcCpuLoadPercent() >= 0 && sysMetrics.gcCpuLoadPercent() <= 100);
+
+                    assertTrue("Unexpected 'heapUsagePercent'",
+                        sysMetrics.heapUsagePercent() > 0 && sysMetrics.gcCpuLoadPercent() <= 100);
+
+                    if (persistenceEnabled)
+                        assertTrue("Unexpected storage size", sysMetrics.dataStorageSizeGigabytes() > 0);
+
+                    checkDataRegions(ignite, sysMetrics);
+                }
+
+                assertFalse("Unprocessed SystemMetricsInformation was found", sysMetricsIter.hasNext());
             }
-
-            assertFalse("Unprocessed SystemMetricsInformation was found", sysMetricsIter.hasNext());
         }
     }
 
@@ -424,5 +462,30 @@ public class IgniteHelperIntegrationTest extends GridCommonAbstractTest {
         infosByConsistentId.addAll(infos);
 
         return infosByConsistentId;
+    }
+
+    /**
+     * @param ignite Ignite.
+     * @param sysMetrics System metrics information.
+     */
+    private void checkDataRegions(IgniteEx ignite, SystemMetricsInformation sysMetrics) {
+        Map<String, Double> drUsagePercents = sysMetrics.dataRegionUsagesPercents();
+
+        assertEquals("Unexpected data regions count", DATA_REGIONS.size(), drUsagePercents.size());
+
+        assertEqualsCollectionsIgnoringOrder(DATA_REGIONS, drUsagePercents.keySet());
+
+        for (String drName : DATA_REGIONS) {
+            MetricRegistry mReg = ignite.context().metric().registry(metricName(DATAREGION_METRICS_PREFIX, drName));
+
+            long offheapUsedSize = ((LongMetric)mReg.findMetric("OffheapUsedSize")).value();
+            long maxSize = ((LongMetric)mReg.findMetric("MaxSize")).value();
+
+            double expUsagePercent = (double)offheapUsedSize / maxSize * 100;
+
+            String errMsg = "Unexpected usage percent: [igniteName=" + ignite.name() + ", drName=" + drName + ']';
+
+            assertEquals(errMsg, expUsagePercent, (double)drUsagePercents.get(drName));
+        }
     }
 }

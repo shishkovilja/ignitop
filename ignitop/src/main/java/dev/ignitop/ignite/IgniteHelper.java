@@ -69,6 +69,11 @@ public class IgniteHelper implements AutoCloseable {
     /** Rebalanced metric. */
     public static final String REBALANCED_METRIC = "cluster.Rebalanced";
 
+    /** Data region metric regex. */
+    public static final Pattern DATA_REGION_METRIC_REGEX =
+        Pattern.compile("DataStorageConfiguration\\.DefaultDataRegionConfiguration\\.Name|" +
+        "DataStorageConfiguration.DataRegionConfigurations\\[[0-9]+].Name");
+
     /** Client. */
     private final IgniteClient client;
 
@@ -111,35 +116,12 @@ public class IgniteHelper implements AutoCloseable {
     public Collection<SystemMetricsInformation> systemMetrics() {
         Collection<ClusterNode> nodes = client.cluster().forServers().nodes();
 
-        ClusterNode randomNode = nodes.iterator().next();
-
-        List<List<?>> cfg = view(CFG_VIEW, randomNode.id());
-
-        Pattern drNameRegex = Pattern.compile("DataStorageConfiguration\\.DefaultDataRegionConfiguration\\.Name|" +
-            "DataStorageConfiguration.DataRegionConfigurations\\[[0-9]+].Name");
-
-        Set<String> drNames = cfg.stream()
-            .filter(l -> drNameRegex.matcher(String.valueOf(l.get(0))).find())
-            .map(l -> String.valueOf(l.get(1)))
-            .collect(Collectors.toSet());
-
-        List<SystemMetricsInformation> metrics = new ArrayList<>(nodes.size());
-
-        Map<String, Float> dataRegionUsagesPercents = new HashMap<>();
+        List<SystemMetricsInformation> metricsInfo = new ArrayList<>(nodes.size());
 
         for (ClusterNode node : nodes) {
-            UUID id = node.id();
+            UUID nodeId = node.id();
 
-            Map<String, ?> sysMetrics = metric(SYS_METRICS, id);
-
-            for (String drName : drNames) {
-                long offheapUsedSize = singleMetric(metricName(DATAREGION_METRICS_PREFIX, drName, "OffheapUsedSize"),
-                    id, 0L);
-
-                long maxSize = singleMetric(metricName(DATAREGION_METRICS_PREFIX, drName, "MaxSize"), id, 0L);
-
-                dataRegionUsagesPercents.put(drName, (float)offheapUsedSize / maxSize * 100);
-            }
+            Map<String, ?> sysMetrics = metric(SYS_METRICS, nodeId);
 
             double cpuLoad = (double)sysMetrics.get(metricName(SYS_METRICS, CPU_LOAD));
 
@@ -151,7 +133,7 @@ public class IgniteHelper implements AutoCloseable {
             long heapUsed = (long)sysMetrics.get(metricName(SYS_METRICS, "memory", "heap", "used"));
             long heapMax = (long)sysMetrics.get(metricName(SYS_METRICS, "memory", "heap", "max"));
 
-            long dataStorageSize = singleMetric(metricName(DATASTORAGE_METRIC_PREFIX, "StorageSize"), id, 0L);
+            long dataStorageSize = singleMetric(metricName(DATASTORAGE_METRIC_PREFIX, "StorageSize"), nodeId, 0L);
 
             SystemMetricsInformation sysMetricsInfo = new SystemMetricsInformation(
                 node.consistentId(),
@@ -161,13 +143,40 @@ public class IgniteHelper implements AutoCloseable {
                 loadAverage,
                 gcCpuLoad,
                 (double)heapUsed / heapMax * 100,
-                dataRegionUsagesPercents,
+                dataRegionUsagePercents(nodeId),
                 (double)dataStorageSize / 1024 / 1024 / 1024);
 
-            metrics.add(sysMetricsInfo);
+            metricsInfo.add(sysMetricsInfo);
         }
 
-        return metrics;
+        return metricsInfo;
+    }
+
+    /**
+     * Get data regions utilization int percents on a specified node.
+     *
+     * @param nodeId Node id.
+     */
+    private Map<String, Double> dataRegionUsagePercents(UUID nodeId) {
+        List<List<?>> cfg = view(CFG_VIEW, nodeId);
+
+        Set<String> drNames = cfg.stream()
+            .filter(l -> DATA_REGION_METRIC_REGEX.matcher(String.valueOf(l.get(0))).find())
+            .map(l -> String.valueOf(l.get(1)))
+            .collect(Collectors.toSet());
+
+        Map<String, Double> dataRegionUsagesPercents = new HashMap<>();
+
+        for (String drName : drNames) {
+            long offheapUsedSize = singleMetric(metricName(DATAREGION_METRICS_PREFIX, drName, "OffheapUsedSize"),
+                nodeId, 0L);
+
+            long maxSize = singleMetric(metricName(DATAREGION_METRICS_PREFIX, drName, "MaxSize"), nodeId, 0L);
+
+            dataRegionUsagesPercents.put(drName, (double)offheapUsedSize / maxSize * 100);
+        }
+
+        return dataRegionUsagesPercents;
     }
 
     /**
@@ -223,7 +232,7 @@ public class IgniteHelper implements AutoCloseable {
 
     /**
      * Return first found entry for a specified metric name. Because {@link VisorMetricTaskArg} can return multiple
-     * values, it is excpected, that this method is called for a single-value metric (not whole metric registry).
+     * values, it is expected, that this method is called for a single-value metric (not whole metric registry).
      *
      * @param metricName Metric name.
      * @param nodeId Node id.
