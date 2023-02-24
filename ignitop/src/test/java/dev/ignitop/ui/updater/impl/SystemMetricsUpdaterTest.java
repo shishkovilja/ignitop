@@ -27,13 +27,15 @@ import java.util.stream.IntStream;
 import dev.ignitop.ignite.IgniteHelper;
 import dev.ignitop.ignite.system.SystemMetricsInformation;
 import dev.ignitop.ui.component.TerminalComponent;
-import dev.ignitop.util.TestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import static dev.ignitop.util.TestUtils.DEC_SEP;
+import static dev.ignitop.util.TestUtils.renderToString;
+import static java.lang.System.lineSeparator;
 import static org.fusesource.jansi.Ansi.ansi;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -83,11 +85,13 @@ class SystemMetricsUpdaterTest {
 
         when(igniteHelper.systemMetrics()).thenReturn(infos);
 
-        TerminalComponent table = new SystemMetricsUpdater(igniteHelper).components()
-            .iterator()
-            .next();
+        Iterator<TerminalComponent> compIter = new SystemMetricsUpdater(igniteHelper).components()
+            .iterator();
 
-        String renderedTable = TestUtils.renderToString(table, table.contentWidth());
+        assertTrue(renderToString(compIter.next(), 400).contains("System metrics"), "Unexpected title");
+        assertEquals(lineSeparator(), renderToString(compIter.next(), 400), "Unexpected empty space");
+
+        String renderedTable = renderToString(compIter.next(), 400);
 
         List<List<String>> renderedCells = renderedTable.lines()
             .map(s -> Arrays.asList(s.split(" +")))

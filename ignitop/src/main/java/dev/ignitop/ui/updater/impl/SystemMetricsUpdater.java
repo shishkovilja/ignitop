@@ -23,7 +23,9 @@ import java.util.List;
 import dev.ignitop.ignite.IgniteHelper;
 import dev.ignitop.ignite.system.SystemMetricsInformation;
 import dev.ignitop.ui.component.TerminalComponent;
+import dev.ignitop.ui.component.impl.EmptySpace;
 import dev.ignitop.ui.component.impl.Table;
+import dev.ignitop.ui.component.impl.Title;
 import dev.ignitop.ui.updater.ScreenUpdater;
 
 /**
@@ -43,6 +45,9 @@ public class SystemMetricsUpdater implements ScreenUpdater {
     /** {@inheritDoc} */
     @Override public Collection<TerminalComponent> components() {
         List<TerminalComponent> components = new ArrayList<>();
+
+        components.add(new Title("System metrics"));
+        components.add(new EmptySpace(1));
 
         Collection<SystemMetricsInformation> sysMetrics = igniteHelper.systemMetrics();
 
