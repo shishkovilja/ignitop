@@ -18,6 +18,7 @@ package dev.ignitop.ui.updater.impl;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import dev.ignitop.ignite.IgniteHelper;
 import dev.ignitop.ignite.system.SystemMetricsInformation;
@@ -45,16 +46,16 @@ public class SystemMetricsUpdater implements ScreenUpdater {
 
         Collection<SystemMetricsInformation> sysMetrics = igniteHelper.systemMetrics();
 
-        List<String> hdr = new ArrayList<>(List.of("Consistent ID", "Host names", "Cpu %", "Load avg", "GC CPU %", "Heap %"));
+        List<String> hdr = new ArrayList<>(List.of("ConsID", "HostNames", "CPU%", "LoadAvg", "GC_CPU%", "Heap%"));
 
         SystemMetricsInformation randomInfo = sysMetrics.iterator().next();
 
         // Sorting of data region usages by names is provided by SystemMetricsInformation
         randomInfo.dataRegionUsagesPercents()
             .keySet()
-            .forEach(drName -> hdr.add("DR: " + drName + " %"));
+            .forEach(drName -> hdr.add("DataReg%:" + drName));
 
-        hdr.add("Data storage GB");
+        hdr.add("DStorageGB");
 
         List<Object[]> rows = new ArrayList<>();
 
@@ -63,7 +64,7 @@ public class SystemMetricsUpdater implements ScreenUpdater {
 
         components.add(new Table(hdr, rows));
 
-        return components;
+        return Collections.unmodifiableList(components);
     }
 
     /**

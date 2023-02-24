@@ -16,7 +16,6 @@
 
 package dev.ignitop.ui.component.impl;
 
-import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -24,6 +23,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
+import static dev.ignitop.util.TestUtils.DEC_SEP;
 import static dev.ignitop.util.TestUtils.renderToString;
 import static java.lang.System.lineSeparator;
 import static org.fusesource.jansi.Ansi.ansi;
@@ -208,12 +208,9 @@ class TableTest {
 
         assertEquals(3, cells.length, "Unexpected cells count in a row");
 
-        char decSep = DecimalFormatSymbols.getInstance()
-            .getDecimalSeparator();
-
-        assertEquals("4" + decSep + "0", cells[0]);
-        assertEquals("10" + decSep + "1", cells[1]);
-        assertEquals("0" + decSep + "9", cells[2]);
+        assertEquals("4" + DEC_SEP + "0", cells[0]);
+        assertEquals("10" + DEC_SEP + "1", cells[1]);
+        assertEquals("0" + DEC_SEP + "9", cells[2]);
     }
 
     /**

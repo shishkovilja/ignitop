@@ -19,6 +19,7 @@ package dev.ignitop.util;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.text.DecimalFormatSymbols;
 import dev.ignitop.ui.component.TerminalComponent;
 import org.apache.ignite.lang.IgniteProductVersion;
 
@@ -29,6 +30,9 @@ public class TestUtils {
     /** Ignite version. */
     public static final IgniteProductVersion IGNITE_VERSION = new IgniteProductVersion((byte)2, (byte)15, (byte)0,
         0L, new byte[20]);
+
+    /** Decimal separator. */
+    public static final char DEC_SEP = DecimalFormatSymbols.getInstance().getDecimalSeparator();
 
     /**
      * @param component Component.
