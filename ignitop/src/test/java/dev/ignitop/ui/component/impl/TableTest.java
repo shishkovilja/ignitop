@@ -16,14 +16,15 @@
 
 package dev.ignitop.ui.component.impl;
 
+import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import dev.ignitop.util.TestUtils;
 import org.junit.jupiter.api.Test;
 
+import static dev.ignitop.util.TestUtils.renderToString;
 import static java.lang.System.lineSeparator;
 import static org.fusesource.jansi.Ansi.ansi;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -33,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  *
  */
-// TODO Add test for double values.
+// TODO Refactor: method names, public modifiers, boiler plate in contentWidth_* (https://github.com/shishkovilja/ignitop/issues/55)
 class TableTest {
     /** Wide header. */
     public static final String WIDE_HEADER = "Very very very wide header";
@@ -160,7 +161,7 @@ class TableTest {
 
         Table table = new Table(hdr, List.of());
 
-        String renderedTable = TestUtils.renderToString(table, table.contentWidth());
+        String renderedTable = renderToString(table, table.contentWidth());
 
         String renderedHdr = renderedTable.lines()
             .findFirst()
@@ -179,7 +180,7 @@ class TableTest {
 
         Table table = new Table(List.of("Header1", "Header2"), rows);
 
-        String renderedTable = TestUtils.renderToString(table, table.contentWidth());
+        String renderedTable = renderToString(table, table.contentWidth());
 
         List<String> renderedTableLines = renderedTable.lines()
             .collect(Collectors.toList());
@@ -187,6 +188,32 @@ class TableTest {
         String row0 = renderedTableLines.get(1);
 
         assertEquals("Cell01   null     ", row0);
+    }
+
+    /**
+     *
+     */
+    @Test
+    public void render_withDoubleValues() {
+        List<String> hdr = List.of(WIDE_HEADER, WIDE_HEADER, WIDE_HEADER);
+
+        List<Object[]> rows = new ArrayList<>();
+        rows.add(new Object[]{4.003, 10.101, 0.91});
+
+        Table table = new Table(hdr, rows);
+
+        String[] renderedTableLines = renderToString(table, table.contentWidth()).split(lineSeparator());
+
+        String[] cells = renderedTableLines[1].split(" +");
+
+        assertEquals(3, cells.length, "Unexpected cells count in a row");
+
+        char decSep = DecimalFormatSymbols.getInstance()
+            .getDecimalSeparator();
+
+        assertEquals("4" + decSep + "0", cells[0]);
+        assertEquals("10" + decSep + "1", cells[1]);
+        assertEquals("0" + decSep + "9", cells[2]);
     }
 
     /**
@@ -268,7 +295,7 @@ class TableTest {
      * @param expColWidths Expected column widths.
      */
     private void checkTable(Table table, int renderWidth, List<Integer> expColWidths) {
-        String renderedTable = TestUtils.renderToString(table, renderWidth);
+        String renderedTable = renderToString(table, renderWidth);
 
         // Header + rows + total items line.
         assertEquals(table.rows().size() + 2, renderedTable.lines().count());
