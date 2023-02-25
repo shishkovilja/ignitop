@@ -44,7 +44,7 @@ class TerminalUiTest {
     public static final int LABEL_WIDTH = 10;
 
     /** Mock terminal. */
-    private Terminal mockTerminal;
+    private TerminalProvider mockTerminalProvider;
 
     /** Mock sreen updater. */
     private ScreenUpdater mockSreenUpdater;
@@ -54,7 +54,7 @@ class TerminalUiTest {
      */
     @BeforeEach
     public void setUp() {
-        mockTerminal = mock(Terminal.class);
+        mockTerminalProvider = mock(TerminalProvider.class);
 
         mockSreenUpdater = mock(ScreenUpdater.class);
     }
@@ -84,7 +84,7 @@ class TerminalUiTest {
     }
 
     /**
-     * @param terminalWidth Terminal width.
+     * @param terminalWidth TerminalProvider width.
      * @param expectedWidth Expected width user to render components.
      */
     private void checkWithTerminalWidth(int terminalWidth, int expectedWidth) {
@@ -97,11 +97,11 @@ class TerminalUiTest {
         Label lbl = mock(Label.class);
         when(lbl.contentWidth()).thenReturn(LABEL_WIDTH);
 
-        TerminalUi ui = new TerminalUi(mockTerminal);
+        TerminalUi ui = new TerminalUi(mockTerminalProvider);
         ui.updater(mockSreenUpdater);
         when(mockSreenUpdater.components()).thenReturn(List.of(wideTable, narrowTable, lbl));
 
-        when(mockTerminal.width()).thenReturn(terminalWidth);
+        when(mockTerminalProvider.width()).thenReturn(terminalWidth);
 
         ui.refresh();
 

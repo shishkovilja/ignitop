@@ -202,7 +202,7 @@ class TopologyInformationUpdaterTest {
 
     /**
      * @param tblRowsCnt Table rows count.
-     * @param component Terminal component. <em>Table</em> expected.
+     * @param component TerminalProvider component. <em>Table</em> expected.
      * @param infos Nodes information collection.
      */
     private <T> void checkTableRows(int tblRowsCnt, TerminalComponent component, Collection<T> infos,
