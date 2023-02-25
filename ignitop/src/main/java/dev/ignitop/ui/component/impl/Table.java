@@ -18,7 +18,9 @@ package dev.ignitop.ui.component.impl;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import dev.ignitop.ui.component.TerminalComponent;
@@ -36,8 +38,8 @@ public class Table implements TerminalComponent {
     /** Table header. */
     private final List<String> hdr;
 
-    /** Table rows. */
-    private final List<Object[]> rows;
+    /** Table rows "as is". */
+    private final List<Object[]> rawRows;
 
     /** Header widths. */
     private final List<Integer> hdrWidths;
@@ -51,16 +53,22 @@ public class Table implements TerminalComponent {
     /** Content width. */
     private int contentWidth;
 
+    /** Sorting col index. */
+    private int sortingColIdx;
+
+    /** Asc sorting. */
+    private boolean ascSorting;
+
     /**
      * @param hdr Header.
-     * @param rows Rows.
+     * @param rawRows Rows.
      */
-    public Table(List<String> hdr, List<Object[]> rows) {
+    public Table(List<String> hdr, List<Object[]> rawRows) {
         if (hdr.isEmpty())
             throw new IllegalArgumentException("Table columns headers list must not be empty");
 
         this.hdr = Collections.unmodifiableList(hdr);
-        this.rows = new ArrayList<>(rows);
+        this.rawRows = new ArrayList<>(rawRows);
 
         hdrWidths = hdr.stream()
             .map(o -> String.valueOf(o).length())
@@ -71,6 +79,9 @@ public class Table implements TerminalComponent {
         // Pre-fill column widths by header length.
         columnWidths = new ArrayList<>(hdrWidths);
 
+        sortingColIdx = 0;
+        ascSorting = true;
+
         determineContent();
     }
 
@@ -80,25 +91,19 @@ public class Table implements TerminalComponent {
      * Calculate content width.
      */
     private void determineContent() {
-        for (Object[] row : rows) {
+        for (Object[] row : rawRows) {
             if (row.length != hdr.size()) {
                 throw new IllegalArgumentException("Row elements count does not correspond header elements count: " +
                     "[rowSize=" + row.length + ", hdrSize=" + hdr.size() + "]");
             }
 
             for (int i = 0; i < row.length; i++) {
-                Object cell = row[i];
+                String cell = str(row[i]);
 
-                if (cell instanceof Double) {
-                    cell = String.format("%.1f", cell);
+                int cellWidth = cell.length();
 
-                    row[i] = cell;
-                }
-
-                int elementSize = String.valueOf(cell).length();
-
-                if (elementSize > columnWidths.get(i))
-                    columnWidths.set(i, elementSize);
+                if (cellWidth > columnWidths.get(i))
+                    columnWidths.set(i, cellWidth);
             }
         }
 
@@ -148,17 +153,44 @@ public class Table implements TerminalComponent {
 
         printHeader(strFormat, out, hdr.toArray());
 
-        for (Object[] row : rows) {
-            out.printf(strFormat, row);
+        for (Object[] row : rows()) {
+            out.printf(strFormat, stringify(row));
             out.println();
         }
 
-        out.println("Total items: " + rows.size());
+        out.println("Total items: " + rawRows.size());
+    }
+
+    /**
+     * @param colIdx Index of column which will be user to sort rows.
+     * @param ascending Ascending sorting. Set <code>false</code> for descending sorting.
+     */
+    public void setSorting(int colIdx, boolean ascending) {
+        sortingColIdx = colIdx;
+        ascSorting = ascending;
     }
 
     /** {@inheritDoc} */
     @Override public int contentWidth() {
         return contentWidth;
+    }
+
+    /**
+     * @return Table header.
+     */
+    public List<String> header() {
+        return hdr;
+    }
+
+    /**
+     * Return sorted rows of a table. Comparing logic is perfromed by {@link #compareRows(Object[], Object[])} method.
+     *
+     * @return Table rows.
+     */
+    public Collection<Object[]> rows() {
+        return rawRows.stream()
+            .sorted(this::compareRows)
+            .collect(Collectors.toUnmodifiableList());
     }
 
     /**
@@ -179,16 +211,49 @@ public class Table implements TerminalComponent {
     }
 
     /**
-     * @return Table header.
+     * "Stringify" row elements.
+     *
+     * @param row Row.
      */
-    public List<String> header() {
-        return hdr;
+    private Object[] stringify(Object[] row) {
+        Object[] strs = new Object[row.length];
+
+        for (int i = 0; i < row.length; i++)
+            strs[i] = str(row[i]);
+
+        return strs;
     }
 
     /**
-     * @return Table rows.
+     * Gets string representation of an object.
+     *
+     * @param obj Object.
      */
-    public List<Object[]> rows() {
-        return Collections.unmodifiableList(rows);
+    private String str(Object obj) {
+        return obj instanceof Double ? String.format("%.1f", (Double)obj) : String.valueOf(obj);
+    }
+
+    /**
+     * Compare rows according sorting parameters: by column and ascending or descending order.
+     * If column values are instances of {@link Comparable}, then {@link Comparable#compareTo(Object)} will be used
+     * to compare elements. Otherwise, string representations of an objects will be compared.
+     *
+     * @param row1 Row 1.
+     * @param row2 Row 2.
+     */
+    private int compareRows(Object[] row1, Object[] row2) {
+        Object obj1 = row1[sortingColIdx];
+        Object obj2 = row2[sortingColIdx];
+
+        Comparator<Object> comp;
+
+        if (obj1 instanceof Comparable && obj2 instanceof Comparable)
+            comp = (o1, o2) -> ((Comparable<Object>)o1).compareTo(o2);
+        else
+            comp = Comparator.comparing(String::valueOf);
+
+        comp = ascSorting ? comp : comp.reversed();
+
+        return comp.compare(obj1, obj2);
     }
 }

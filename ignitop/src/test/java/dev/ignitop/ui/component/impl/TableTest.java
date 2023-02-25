@@ -18,9 +18,12 @@ package dev.ignitop.ui.component.impl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
 import static dev.ignitop.util.TestUtils.DEC_SEP;
@@ -62,7 +65,7 @@ class TableTest {
         // Delta = 80 - (28 + 16) = 36
         // Col1: 28 * 36 / 44 -> 28 expand on 22 -> 50 (36 - 22 = 14 of delta left) -> minus 2 gap -> 48
         // Col2: 16 * 36 / 44 -> 16 expand on 13 -> 29 (1 of delta left) -> extra expand on 1 -> 30 -> minus 2 gap -> 28
-        checkTable(new Table(List.of(WIDE_HEADER, NARROW_HEADER), ROWS),
+        checkTableWidths(new Table(List.of(WIDE_HEADER, NARROW_HEADER), ROWS),
             80,
             List.of(48, 28));
     }
@@ -77,7 +80,7 @@ class TableTest {
 
         Table table = new Table(List.of(WIDE_HEADER, NARROW_HEADER), ROWS);
 
-        checkTable(table, table.contentWidth(), List.of(col0, col1));
+        checkTableWidths(table, table.contentWidth(), List.of(col0, col1));
     }
 
     /**
@@ -91,7 +94,7 @@ class TableTest {
         // Delta = 20 - (16 + 16) = -12
         // Col1: -12 * 16 / 32 -> 16 shrink on 6 -> 10 (-12 - (-6) = -6 of delta left) -> minus 2 gap -> 8
         // Col2: -12 * 16 / 32 -> 16 shrink on 6 -> 10 (0 of delta left) -> minus 2 gap -> 8
-        checkTable(new Table(List.of(NARROW_HEADER, NARROW_HEADER), ROWS),
+        checkTableWidths(new Table(List.of(NARROW_HEADER, NARROW_HEADER), ROWS),
             20,
             List.of(8, 8));
     }
@@ -103,7 +106,7 @@ class TableTest {
     void render_withContentShrinking_on1Char() {
         Table table = new Table(List.of(WIDE_HEADER, NARROW_HEADER), ROWS);
 
-        checkTable(table, table.contentWidth() - 1, List.of(WIDE_HEADER.length(), WIDEST_CONTENT.length() - 1));
+        checkTableWidths(table, table.contentWidth() - 1, List.of(WIDE_HEADER.length(), WIDEST_CONTENT.length() - 1));
     }
 
     /**
@@ -113,7 +116,7 @@ class TableTest {
     void render_withContentShrinking_on2Chars() {
         Table table = new Table(List.of(WIDE_HEADER, NARROW_HEADER), ROWS);
 
-        checkTable(table, table.contentWidth() - 2, List.of(WIDE_HEADER.length(), WIDEST_CONTENT.length() - 2));
+        checkTableWidths(table, table.contentWidth() - 2, List.of(WIDE_HEADER.length(), WIDEST_CONTENT.length() - 2));
     }
 
     /**
@@ -129,7 +132,7 @@ class TableTest {
         // Delta = (26 + 7 - 1) - (28 + 16) = -12
         // Col1: -12 * 28 / 44 -> 28 shrink on 7 -> 21 (-12 - (-7) = -5 of delta left) -> minus 2 gap -> 19
         // Col2: -12 * 16 / 44 -> 16 shrink on 4 -> 12 (-1 of delta left) -> extra shrink on 1 -> 11 -> minus 2 gap -> 9
-        checkTable(table, WIDE_HEADER.length() + NARROW_HEADER.length() - 1,
+        checkTableWidths(table, WIDE_HEADER.length() + NARROW_HEADER.length() - 1,
             List.of(19, 9));
     }
 
@@ -146,7 +149,7 @@ class TableTest {
         // Delta = (26 + 7 - 8) - (28 + 16) = -19
         // Col1: -19 * 28 / 44 -> 28 shrink on 12 -> 16 (-19 - (-12) = -7 of delta left) -> minus 2 gap -> 14
         // Col2: -19 * 16 / 44 -> 16 shrink on 6 -> 10 (-1 of delta left) -> extra shrink on 1 -> 9 -> minus 2 gap -> 7
-        checkTable(table, WIDE_HEADER.length() + NARROW_HEADER.length() - 8,
+        checkTableWidths(table, WIDE_HEADER.length() + NARROW_HEADER.length() - 8,
             List.of(14, 7));
     }
 
@@ -242,7 +245,7 @@ class TableTest {
     void render_withEmptyRows() {
         Table table = new Table(List.of(WIDE_HEADER, NARROW_HEADER), List.of());
 
-        checkTable(table, table.contentWidth(), List.of(WIDE_HEADER.length(), NARROW_HEADER.length()));
+        checkTableWidths(table, table.contentWidth(), List.of(WIDE_HEADER.length(), NARROW_HEADER.length()));
     }
 
     /**
@@ -275,11 +278,27 @@ class TableTest {
     }
 
     /**
+     *
+     */
+    @Test
+    void setSorting_firstColumn_ascending() {
+        checkSetSorting(5, 0, true);
+    }
+
+    /**
+     *
+     */
+    @Test
+    void setSorting_secondColumn_descending() {
+        checkSetSorting(5, 1, false);
+    }
+
+    /**
      * @param rowsCnt Rows count.
      */
     private static List<Object[]> rows(int rowsCnt) {
         return IntStream.range(0, rowsCnt)
-            .mapToObj(i -> new Object[]{"Content [" + i + ",1]", "Content [" + i + ",2]"})
+            .mapToObj(i -> new Object[]{new Content(rowsCnt - i - 1, 0), new Content(i, 1)})
             .collect(Collectors.toList());
     }
 
@@ -291,7 +310,7 @@ class TableTest {
      * @param renderWidth Render width.
      * @param expColWidths Expected column widths.
      */
-    private void checkTable(Table table, int renderWidth, List<Integer> expColWidths) {
+    private void checkTableWidths(Table table, int renderWidth, List<Integer> expColWidths) {
         String renderedTable = renderToString(table, renderWidth);
 
         // Header + rows + total items line.
@@ -359,5 +378,94 @@ class TableTest {
             .append(rowsWithHdr.size() - 1)
             .append(lineSeparator())
             .toString();
+    }
+
+    /**
+     * @param rowsCnt Rows count.
+     * @param sortedCol Sorted column.
+     * @param ascending Ascending sorting.
+     */
+    private void checkSetSorting(int rowsCnt, int sortedCol, boolean ascending) {
+        List<Object[]> expRows = expectedSortedRows(rowsCnt, sortedCol, ascending);
+
+        Table table = new Table(List.of(WIDE_HEADER, WIDE_HEADER), rows(rowsCnt));
+        table.setSorting(sortedCol, ascending);
+
+        Collection<Object[]> tableRows = table.rows();
+
+        assertEquals(expRows.size(), tableRows.size(), "Unexpected rows count");
+
+        Iterator<Object[]> rowsIter = tableRows.iterator();
+
+        for (Object[] expRow : expRows)
+            assertEquals(Arrays.toString(expRow), Arrays.toString(rowsIter.next()), "Rows should be equal");
+    }
+
+    /**
+     * @param rowsCnt Rows count.
+     * @param sortedCol Sorted col.
+     * @param ascending Ascending.
+     */
+    private List<Object[]> expectedSortedRows(int rowsCnt, int sortedCol, boolean ascending) {
+        List<Object[]> expRows = new ArrayList<>(rowsCnt);
+
+        for (int i = 0; i < rowsCnt; i++) {
+            Content ascCont0 = new Content(i, 0);
+            Content ascCont1 = new Content(i, 1);
+
+            Content descCont0 = new Content(rowsCnt - i - 1, 0);
+            Content descCont1 = new Content(rowsCnt - i - 1, 1);
+
+            Object[] row = sortedCol == 0 ?
+                ascending ? new Object[]{ascCont0, descCont1} : new Object[]{descCont0, ascCont1} :
+                ascending ? new Object[]{descCont0, ascCont1} : new Object[]{ascCont0, descCont1};
+
+            expRows.add(row);
+        }
+
+        return expRows;
+    }
+
+    /**
+     *
+     */
+    public static class Content implements Comparable<Content> {
+        /** Row. */
+        private final int row;
+
+        /** Col. */
+        private final int col;
+
+        /**
+         * @param row Row.
+         * @param col Col.
+         */
+        public Content(int row, int col) {
+            this.row = row;
+            this.col = col;
+        }
+
+        /** {@inheritDoc} */
+        @Override public int compareTo(@NotNull TableTest.Content o) {
+            if (this == o)
+                return 0;
+
+            int rowsCompRes = Integer.compare(row, o.row);
+
+            if (rowsCompRes != 0)
+                return rowsCompRes;
+
+            return Integer.compare(col, o.col);
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean equals(Object o) {
+            return o instanceof Content && compareTo((Content)o) == 0;
+        }
+
+        /** {@inheritDoc} */
+        @Override public String toString() {
+            return "Content [" + row + "," + col + ']';
+        }
     }
 }
