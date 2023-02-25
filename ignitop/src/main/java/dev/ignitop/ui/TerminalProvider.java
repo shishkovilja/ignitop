@@ -16,26 +16,42 @@
 
 package dev.ignitop.ui;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import org.fusesource.jansi.AnsiConsole;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.TerminalBuilder;
+import org.jline.utils.NonBlockingReader;
 
 import static java.lang.System.out;
 
 /**
  *
  */
-public class Terminal implements AutoCloseable {
+public class TerminalProvider implements AutoCloseable {
     /** Default terminal width. */
     public static final int DEFAULT_TERMINAL_WIDTH = 80;
 
-    /** Closed state marker. */
-    private volatile boolean closed;
+    /** Terminal. */
+    private final Terminal terminal;
 
     /**
      * Default constructor.
      */
-    public Terminal() {
+    public TerminalProvider() {
         enterPrivateMode();
+
+        TerminalBuilder terminalBuilder = TerminalBuilder.builder();
+
+        try {
+            terminal = terminalBuilder.name("IgniTop")
+                .build();
+
+            terminal.enterRawMode();
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -44,7 +60,7 @@ public class Terminal implements AutoCloseable {
     private void enterPrivateMode() {
         AnsiConsole.systemInstall();
 
-        out.println("\033[?1049h");
+        out.print("\033[?1049h");
         out.flush();
 
         hideCursor();
@@ -55,10 +71,9 @@ public class Terminal implements AutoCloseable {
      * Exit private mode, i.e. disable alternative buffer.
      */
     private void exitPrivateMode() {
-        eraseScreen();
         showCursor();
 
-        out.println("\033[?1049l");
+        out.print("\033[?1049l");
         out.flush();
 
         AnsiConsole.systemUninstall();
@@ -104,12 +119,23 @@ public class Terminal implements AutoCloseable {
         return out;
     }
 
+    /**
+     *
+     */
+    public NonBlockingReader reader() {
+        return terminal.reader();
+    }
+
     /** {@inheritDoc} */
     @Override public void close() {
-        if (!closed) {
+        try {
+            terminal.close();
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        finally {
             exitPrivateMode();
-
-            closed = true;
         }
     }
 }

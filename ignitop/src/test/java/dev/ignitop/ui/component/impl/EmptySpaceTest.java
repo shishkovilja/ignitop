@@ -19,7 +19,7 @@ package dev.ignitop.ui.component.impl;
 import dev.ignitop.util.TestUtils;
 import org.junit.jupiter.api.Test;
 
-import static dev.ignitop.ui.Terminal.DEFAULT_TERMINAL_WIDTH;
+import static dev.ignitop.ui.TerminalProvider.DEFAULT_TERMINAL_WIDTH;
 import static dev.ignitop.ui.TerminalUi.WHOLE_LINE;
 import static java.lang.System.lineSeparator;
 import static org.junit.jupiter.api.Assertions.assertEquals;

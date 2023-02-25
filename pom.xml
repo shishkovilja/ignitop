@@ -75,6 +75,7 @@
     <maven.surefire.plugin.version>3.0.0-M7</maven.surefire.plugin.version>
     <maven.assembly.plugin.version>3.3.0</maven.assembly.plugin.version>
     <junit.version>4.13.2</junit.version>
+    <jline.version>3.22.0</jline.version>
   </properties>
 
   <dependencyManagement>
@@ -101,6 +102,12 @@
         <groupId>org.fusesource.jansi</groupId>
         <artifactId>jansi</artifactId>
         <version>${jansi.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.jline</groupId>
+        <artifactId>jline</artifactId>
+        <version>${jline.version}</version>
       </dependency>
 
       <dependency>

@@ -28,8 +28,8 @@ public class TerminalUi {
     /** Size of a component, which take up whole line. */
     public static final int WHOLE_LINE = -1;
 
-    /** Terminal. */
-    private final Terminal terminal;
+    /** TerminalProvider. */
+    private final TerminalProvider terminalProvider;
 
     /** Current screen updater. */
     private final AtomicReference<ScreenUpdater> updaterRef = new AtomicReference<>();
@@ -38,12 +38,12 @@ public class TerminalUi {
     private int width;
 
     /**
-     * @param terminal Terminal.
+     * @param terminalProvider TerminalProvider.
      */
-    public TerminalUi(Terminal terminal) {
-        this.terminal = terminal;
+    public TerminalUi(TerminalProvider terminalProvider) {
+        this.terminalProvider = terminalProvider;
 
-        width = terminal.width();
+        width = terminalProvider.width();
     }
 
     /**
@@ -52,24 +52,24 @@ public class TerminalUi {
     public void refresh() {
         Collection<TerminalComponent> components = updaterRef.get().components();
 
-        width = terminal.width();
+        width = terminalProvider.width();
 
         int maxComponentWidth = components.stream()
             .mapToInt(TerminalComponent::contentWidth)
             .max()
             .orElse(width);
 
-        terminal.eraseScreen();
+        terminalProvider.eraseScreen();
 
         for (TerminalComponent component : components)
-            component.render(Math.min(maxComponentWidth, width), terminal.out());
+            component.render(Math.min(maxComponentWidth, width), terminalProvider.out());
     }
 
     /**
      *
      */
     public boolean resized() {
-        return width != terminal.width();
+        return width != terminalProvider.width();
     }
 
     /**

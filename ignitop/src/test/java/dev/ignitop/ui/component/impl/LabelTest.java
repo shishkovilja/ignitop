@@ -24,7 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-import static dev.ignitop.ui.Terminal.DEFAULT_TERMINAL_WIDTH;
+import static dev.ignitop.ui.TerminalProvider.DEFAULT_TERMINAL_WIDTH;
 import static java.lang.System.lineSeparator;
 import static org.fusesource.jansi.Ansi.Attribute.UNDERLINE;
 import static org.fusesource.jansi.Ansi.Color.BLUE;
