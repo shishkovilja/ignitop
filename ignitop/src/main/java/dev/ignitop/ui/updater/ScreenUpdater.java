@@ -22,7 +22,7 @@ import dev.ignitop.ui.component.TerminalComponent;
 /**
  *
  */
-// TODO: Migrate to Supplier<Collection<Components>>.
+// TODO: Migrate to Supplier<Collection<Components>> or Function<IgniteManager, Collection<Components>> (https://github.com/shishkovilja/ignitop/issues/42).
 @SuppressWarnings("UnnecessaryModifier")
 public interface ScreenUpdater {
     /**

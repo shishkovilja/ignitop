@@ -77,5 +77,7 @@ public class TerminalUi {
      */
     public void updater(ScreenUpdater updater) {
         updaterRef.set(updater);
+
+        refresh();
     }
 }

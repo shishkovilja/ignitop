@@ -108,13 +108,13 @@ public class TopologyInformationUpdater implements ScreenUpdater {
     private Table nodesTable(Collection<OnlineNodeInfo> nodes) {
         List<String> hdr = List.of("Order", "Consistent ID", "Host names", "IP addresses", "Uptime");
 
-        List<List<?>> rows = nodes.stream()
-            .map(n -> List.of(
+        List<Object[]> rows = nodes.stream()
+            .map(n -> new Object[]{
                 n.order(),
                 n.consistentId(),
                 n.hostNames(),
                 n.addresses(),
-                formattedUptime(n.upTime())))
+                formattedUptime(n.upTime())})
             .collect(Collectors.toList());
 
         return new Table(hdr, rows);
@@ -126,8 +126,8 @@ public class TopologyInformationUpdater implements ScreenUpdater {
     private Table offlineNodesTable(Collection<OfflineNodeInfo> nodes) {
         List<String> hdr = List.of("Consistent ID", "Host names", "IP addresses");
 
-        List<List<?>> rows = nodes.stream()
-            .map(n -> List.of(n.consistentId(), n.hostNames(), n.addresses()))
+        List<Object[]> rows = nodes.stream()
+            .map(n -> new Object[]{n.consistentId(), n.hostNames(), n.addresses()})
             .collect(Collectors.toList());
 
         return new Table(hdr, rows);

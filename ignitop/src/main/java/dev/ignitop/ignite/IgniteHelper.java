@@ -16,6 +16,7 @@
 
 package dev.ignitop.ignite;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,7 +25,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import dev.ignitop.ignite.system.SystemMetricsInformation;
 import dev.ignitop.ignite.topology.OfflineNodeInfo;
 import dev.ignitop.ignite.topology.OnlineNodeInfo;
 import dev.ignitop.ignite.topology.TopologyInformation;
@@ -42,6 +45,13 @@ import org.apache.ignite.internal.visor.systemview.VisorSystemViewTaskArg;
 import org.apache.ignite.internal.visor.systemview.VisorSystemViewTaskResult;
 
 import static dev.ignitop.util.IgniTopUtils.append;
+import static org.apache.ignite.internal.IgniteKernal.CFG_VIEW;
+import static org.apache.ignite.internal.processors.cache.persistence.DataRegionMetricsImpl.DATAREGION_METRICS_PREFIX;
+import static org.apache.ignite.internal.processors.cache.persistence.DataStorageMetricsImpl.DATASTORAGE_METRIC_PREFIX;
+import static org.apache.ignite.internal.processors.metric.GridMetricManager.CPU_LOAD;
+import static org.apache.ignite.internal.processors.metric.GridMetricManager.GC_CPU_LOAD;
+import static org.apache.ignite.internal.processors.metric.GridMetricManager.SYS_METRICS;
+import static org.apache.ignite.internal.processors.metric.impl.MetricUtils.metricName;
 
 /**
  *
@@ -58,6 +68,11 @@ public class IgniteHelper implements AutoCloseable {
 
     /** Rebalanced metric. */
     public static final String REBALANCED_METRIC = "cluster.Rebalanced";
+
+    /** Data region metric regex. */
+    public static final Pattern DATA_REGION_METRIC_REGEX =
+        Pattern.compile("DataStorageConfiguration\\.DefaultDataRegionConfiguration\\.Name|" +
+        "DataStorageConfiguration.DataRegionConfigurations\\[[0-9]+].Name");
 
     /** Client. */
     private final IgniteClient client;
@@ -93,6 +108,75 @@ public class IgniteHelper implements AutoCloseable {
             topVer,
             clusterState(),
             rebalanced);
+    }
+
+    /**
+     *
+     */
+    public Collection<SystemMetricsInformation> systemMetrics() {
+        Collection<ClusterNode> nodes = client.cluster().forServers().nodes();
+
+        List<SystemMetricsInformation> metricsInfo = new ArrayList<>(nodes.size());
+
+        for (ClusterNode node : nodes) {
+            UUID nodeId = node.id();
+
+            Map<String, ?> sysMetrics = metric(SYS_METRICS, nodeId);
+
+            double cpuLoad = (double)sysMetrics.get(metricName(SYS_METRICS, CPU_LOAD));
+
+            double loadAverage = Double.parseDouble(String.valueOf(sysMetrics.get(metricName(SYS_METRICS,
+                "SystemLoadAverage"))));
+
+            double gcCpuLoad = (double)sysMetrics.get(metricName(SYS_METRICS, GC_CPU_LOAD));
+
+            long heapUsed = (long)sysMetrics.get(metricName(SYS_METRICS, "memory", "heap", "used"));
+            long heapMax = (long)sysMetrics.get(metricName(SYS_METRICS, "memory", "heap", "max"));
+
+            long dataStorageSize = singleMetric(metricName(DATASTORAGE_METRIC_PREFIX, "StorageSize"), nodeId, 0L);
+
+            SystemMetricsInformation sysMetricsInfo = new SystemMetricsInformation(
+                node.consistentId(),
+                node.hostNames(),
+                cpuLoad * 100,
+                // Strange double metric to string conversion in Ignite
+                loadAverage,
+                gcCpuLoad,
+                (double)heapUsed / heapMax * 100,
+                dataRegionUsagePercents(nodeId),
+                (double)dataStorageSize / 1024 / 1024 / 1024);
+
+            metricsInfo.add(sysMetricsInfo);
+        }
+
+        return metricsInfo;
+    }
+
+    /**
+     * Get data regions utilization int percents on a specified node.
+     *
+     * @param nodeId Node id.
+     */
+    private Map<String, Double> dataRegionUsagePercents(UUID nodeId) {
+        List<List<?>> cfg = view(CFG_VIEW, nodeId);
+
+        Set<String> drNames = cfg.stream()
+            .filter(l -> DATA_REGION_METRIC_REGEX.matcher(String.valueOf(l.get(0))).find())
+            .map(l -> String.valueOf(l.get(1)))
+            .collect(Collectors.toSet());
+
+        Map<String, Double> dataRegionUsagesPercents = new HashMap<>();
+
+        for (String drName : drNames) {
+            long offheapUsedSize = singleMetric(metricName(DATAREGION_METRICS_PREFIX, drName, "OffheapUsedSize"),
+                nodeId, 0L);
+
+            long maxSize = singleMetric(metricName(DATAREGION_METRICS_PREFIX, drName, "MaxSize"), nodeId, 0L);
+
+            dataRegionUsagesPercents.put(drName, (double)offheapUsedSize / maxSize * 100);
+        }
+
+        return dataRegionUsagesPercents;
     }
 
     /**
@@ -138,15 +222,17 @@ public class IgniteHelper implements AutoCloseable {
      * @param nodeId Node id.
      */
     private Map<String, ?> metric(String metricName, UUID nodeId) {
-        return (Map<String, ?>)executeTask(
+        Map<String, ?> res = (Map<String, ?>)executeTask(
             VisorMetricTask.class.getName(),
             new VisorMetricTaskArg(metricName, null, -1),
             nodeId);
+
+        return res != null ? res : Map.of();
     }
 
     /**
      * Return first found entry for a specified metric name. Because {@link VisorMetricTaskArg} can return multiple
-     * values, it is excpected, that this method is called for a single-value metric (not whole metric registry).
+     * values, it is expected, that this method is called for a single-value metric (not whole metric registry).
      *
      * @param metricName Metric name.
      * @param nodeId Node id.

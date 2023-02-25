@@ -30,6 +30,7 @@ import dev.ignitop.ignite.IgniteHelper;
 import dev.ignitop.ui.TerminalProvider;
 import dev.ignitop.ui.TerminalUi;
 import dev.ignitop.ui.keyhandler.KeyPressHandler;
+import dev.ignitop.ui.updater.impl.SystemMetricsUpdater;
 import dev.ignitop.ui.updater.impl.TopologyInformationUpdater;
 
 /**
@@ -37,7 +38,7 @@ import dev.ignitop.ui.updater.impl.TopologyInformationUpdater;
  */
 public class IgniTop {
     /** Default update interval in seconds. */
-    public static final int DEFAULT_UPDATE_INTERVAL = 1;
+    public static final int DEFAULT_UPDATE_INTERVAL = 5;
 
     /** Default addresses. */
     public static final String[] DEFAULT_ADDRESSES = {"127.0.0.1:10800"};
@@ -117,6 +118,7 @@ public class IgniTop {
         KeyPressHandler keyPressHnd = new KeyPressHandler();
 
         keyPressHnd.addKeyHandler('t', () -> terminalUi.updater(new TopologyInformationUpdater(igniteHelper)));
+        keyPressHnd.addKeyHandler('s', () -> terminalUi.updater(new SystemMetricsUpdater(igniteHelper)));
 
         keyPressFut = keyPressExec.submit(() -> {
             try {

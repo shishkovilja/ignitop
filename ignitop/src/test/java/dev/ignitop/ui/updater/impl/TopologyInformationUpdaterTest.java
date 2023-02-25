@@ -214,6 +214,7 @@ class TopologyInformationUpdaterTest {
 
         Iterator<T> infoIter = infos.iterator();
 
+        // Skipping header row.
         for (int i = 0; i < tblRowsCnt; i++) {
             String tblRow = renderedLines.get(i + 1);
 
