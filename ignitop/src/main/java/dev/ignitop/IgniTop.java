@@ -121,11 +121,11 @@ public class IgniTop {
         keyPressFut = keyPressExec.submit(() -> {
             try {
                 while (!Thread.interrupted()) {
-                    int ch = termProv.reader().read(500);
+                    int ch = termProv.reader().read();
 
                     if (ch == -1)
                         return;
-                    else if (ch != -2)
+                    else if (ch != -2) // Read timeout.
                         keyPressHnd.handle((char)ch);
                 }
             }
