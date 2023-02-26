@@ -94,13 +94,6 @@ public class TerminalUi {
     }
 
     /**
-     *
-     */
-    public boolean resized() {
-        return width != terminalProvider.width();
-    }
-
-    /**
      * @param updater New current screen updater.
      */
     public synchronized void updater(ScreenUpdater updater) {
