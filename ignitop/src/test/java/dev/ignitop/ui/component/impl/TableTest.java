@@ -416,11 +416,20 @@ class TableTest {
                 // Coloring only for default sorting of table (by first column, ascending)
                 if (i == 0) {
                     if (j == 0) {
-                        String srtFmt = String.format("%%-%ds%%-%ds", colWidths.get(0), CELLS_GAP);
+                        String rowCell = String.valueOf(rowCells[0]);
+
+                        int expWidth = colWidths.get(0);
+
+                        int cellContentWidth = Math.min(expWidth, rowCell.length());
+
+                        // We are expanding and extra space needed.
+                        int extraWith = cellContentWidth < expWidth ? expWidth - cellContentWidth : 0;
+
+                        String fmtForSorted = String.format("%%-%ds%%-%ds", cellContentWidth, CELLS_GAP + extraWith);
 
                         formattedCell = ansi().fgBlack()
                             .bg(Ansi.Color.BLUE)
-                            .a(String.format(srtFmt, rowCells[0], ASC_CHAR))
+                            .a(String.format(fmtForSorted, rowCells[0], ASC_CHAR))
                             .reset()
                             .toString();
                     }

@@ -27,10 +27,12 @@ import java.util.stream.IntStream;
 import dev.ignitop.ignite.IgniteHelper;
 import dev.ignitop.ignite.system.SystemMetricsInformation;
 import dev.ignitop.ui.component.TerminalComponent;
+import org.fusesource.jansi.Ansi;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import static dev.ignitop.ui.component.impl.Table.ASC_CHAR;
 import static dev.ignitop.util.TestUtils.DEC_SEP;
 import static dev.ignitop.util.TestUtils.renderToString;
 import static java.lang.System.lineSeparator;
@@ -94,7 +96,7 @@ class SystemMetricsUpdaterTest {
         String renderedTable = renderToString(compIter.next(), 400);
 
         List<List<String>> renderedCells = renderedTable.lines()
-            .map(s -> Arrays.asList(s.split(" +")))
+            .map(s -> Arrays.asList(s.split("\\s+")))
             .collect(Collectors.toList());
 
         Iterator<List<String>> expIter = expTable.iterator();
@@ -155,13 +157,19 @@ class SystemMetricsUpdaterTest {
      * @param drCnt Data regions count.
      */
     private List<String> expectedHeaderRow(int drCnt) {
-        String consIdAnsiStr = ansi()
-            .fgBlack()
-            .bgGreen()
+        String consIdAnsiStr = ansi().fgBlack()
+            .bg(Ansi.Color.BLUE)
             .a("ConsID")
+            .a(ASC_CHAR)
             .toString();
 
-        List<String> hdr0 = List.of(consIdAnsiStr, "HostNames", "CPU%", "LoadAvg", "GC_CPU%", "Heap%");
+        String hostNames = ansi().reset().toString() +
+            ansi().fgBlack()
+                .bgGreen()
+                .a("HostNames")
+                .toString();
+
+        List<String> hdr0 = List.of(consIdAnsiStr, hostNames, "CPU%", "LoadAvg", "GC_CPU%", "Heap%");
 
         List<String> drRegsHdr = IntStream.range(0, drCnt)
             .mapToObj(i -> "DataReg%:test" + i)
@@ -171,6 +179,7 @@ class SystemMetricsUpdaterTest {
 
         expHdr.addAll(drRegsHdr);
         expHdr.addAll(List.of("DStorageGB", ansi().reset().toString()));
+
         return expHdr;
     }
 
