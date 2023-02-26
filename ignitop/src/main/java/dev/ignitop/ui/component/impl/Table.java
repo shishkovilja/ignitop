@@ -35,6 +35,12 @@ public class Table implements TerminalComponent {
     /** A gap between cells. */
     public static final int CELLS_GAP = 2;
 
+    /** Ascending sorting character. */
+    public static final char ASC_CHAR = '△';
+
+    /** Descending sorting character. */
+    public static final char DESC_CHAR = '▽';
+
     /** Table header. */
     private final List<String> hdr;
 
@@ -118,7 +124,7 @@ public class Table implements TerminalComponent {
     @Override public void render(int width, PrintStream out) {
         int contentWidthDelta = contentWidth - width;
 
-        boolean dontShrinkHeaders = hdrWidthSum < width;
+        boolean dontShrinkHeaders = hdrWidthSum <= width;
 
         int remainingDelta = contentWidthDelta;
 
@@ -147,14 +153,14 @@ public class Table implements TerminalComponent {
             columnWidths.set(lastIdx, columnWidths.get(lastIdx) - remainingDelta);
         }
 
-        String strFormat = columnWidths.stream()
-            .map(l -> "%-" + l + '.' + (l - CELLS_GAP) + 's')
-            .collect(Collectors.joining());
+        List<String> formatList = columnWidths.stream()
+            .map(this::format)
+            .collect(Collectors.toList());
 
-        printHeader(strFormat, out, hdr.toArray());
+        printHeader(out);
 
         for (Object[] row : rows()) {
-            out.printf(strFormat, stringify(row));
+            out.printf(String.join("", formatList), stringify(row));
             out.println();
         }
 
@@ -211,20 +217,51 @@ public class Table implements TerminalComponent {
     }
 
     /**
-     * @param format Format.
      * @param out Output stream.
-     * @param columnNames Column names.
      */
-    private void printHeader(String format, PrintStream out, Object... columnNames) {
-        String hdrFmtStr = ansi()
+    private void printHeader(PrintStream out) {
+        List<String> formattedHdr = new ArrayList<>(hdr.size());
+
+        for (int i = 0; i < hdr.size(); i++) {
+            int colWidth = columnWidths.get(i);
+            String hdrCell = hdr.get(i);
+
+            formattedHdr.add(String.format(format(colWidth), hdrCell));
+        }
+
+        char[] sortedColArr = formattedHdr.get(sortingColIdx).toCharArray();
+        sortedColArr[sortedColArr.length - 2] = ascSorting ? ASC_CHAR : DESC_CHAR;
+
+        String hdrBefore = coloredHeader(Ansi.Color.GREEN, formattedHdr.subList(0, sortingColIdx));
+
+        String sortingCol = coloredHeader(Ansi.Color.BLUE, List.of(String.valueOf(sortedColArr)));
+
+        String hdrAfter = coloredHeader(Ansi.Color.GREEN, formattedHdr.subList(sortingColIdx + 1, hdr.size()));
+
+        out.println(hdrBefore + sortingCol + hdrAfter);
+    }
+
+    /**
+     * @param colWidth Column width.
+     */
+    private String format(int colWidth) {
+        return "%-" + colWidth + '.' + (colWidth - CELLS_GAP) + 's';
+    }
+
+    /**
+     * @param color Color.
+     * @param cells Header cells.
+     */
+    private String coloredHeader(Ansi.Color color, List<String> cells) {
+        if (cells.isEmpty())
+            return "";
+
+        return ansi()
             .fgBlack()
-            .bg(Ansi.Color.GREEN)
-            .a(format)
+            .bg(color)
+            .a(String.join("", cells))
             .reset()
             .toString();
-
-        out.printf(hdrFmtStr, columnNames);
-        out.println();
     }
 
     /**
