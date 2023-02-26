@@ -133,7 +133,9 @@ class TableTest {
         // Calculating by widest element:
         // "Very very very wide header  Content [24,1]  "
         // Col1: 26 + 2 (gap) = 28      Col2: 14 + 2 (gap) = 16
-        // Delta = (26 + 7 - 1) - (28 + 16) = -12
+        // Render width = 26 (wide header) + 7 (narrow header) - 1 = 32
+        // Content width = 28 + 16 = 44
+        // Delta = 32 - 44 = -12
         // Col1: -12 * 28 / 44 -> 28 shrink on 7 -> 21 (-12 - (-7) = -5 of delta left) -> minus 2 gap -> 19
         // Col2: -12 * 16 / 44 -> 16 shrink on 4 -> 12 (-1 of delta left) -> extra shrink on 1 -> 11 -> minus 2 gap -> 9
         checkTableWidths(table, WIDE_HEADER.length() + NARROW_HEADER.length() - 1,
@@ -150,11 +152,31 @@ class TableTest {
         // Calculating by widest element:
         // "Very very very wide header  Content [24,1]  "
         // Col1: 26 + 2 (gap) = 28      Col2: 14 + 2 (gap) = 16
-        // Delta = (26 + 7 - 8) - (28 + 16) = -19
+        // Render width = 26 (wide header) + 7 (narrow header) - 8 = 25
+        // Content width = 28 + 16 = 44
+        // Delta = 25 - 44 = -19
         // Col1: -19 * 28 / 44 -> 28 shrink on 12 -> 16 (-19 - (-12) = -7 of delta left) -> minus 2 gap -> 14
         // Col2: -19 * 16 / 44 -> 16 shrink on 6 -> 10 (-1 of delta left) -> extra shrink on 1 -> 9 -> minus 2 gap -> 7
         checkTableWidths(table, WIDE_HEADER.length() + NARROW_HEADER.length() - 8,
             List.of(14, 7));
+    }
+
+    /**
+     *
+     */
+    @Test
+    void render_whenRenderWidth_isLessThan_totalHeadersWidth_on28() {
+        Table table = new Table(List.of(WIDE_HEADER, NARROW_HEADER), ROWS);
+
+        // Calculating by widest element:
+        // "Very very very wide header  Content [24,1]  "
+        // Col1: 26 + 2 (gap) = 28      Col2: 14 + 2 (gap) = 16
+        // Render width = 26 (wide header) + 7 (narrow header) - 28 = 5
+        // Content width = 28 + 16 = 44
+        // Delta = 5 - 44 = -39
+        // Col1: -39 * 28 / 44 -> 28 shrink on 24 -> 4 (-39 - (-24) = -15 of delta left) -> minus 2 gap -> 2
+        // Col2: -39 * 16 / 44 -> 16 shrink on 14 -> 2 (-1 of delta left) -> extra shrink on 1 -> 1 -> minus 2 gap -> !!-1!! should be ZERO
+        checkTableWidths(table, WIDE_HEADER.length() + NARROW_HEADER.length() - 28, List.of(2, 0));
     }
 
     /**

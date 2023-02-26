@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.UnknownFormatConversionException;
 import java.util.stream.Collectors;
 import dev.ignitop.ui.component.TerminalComponent;
 import org.fusesource.jansi.Ansi;
@@ -138,6 +139,9 @@ public class Table implements TerminalComponent {
 
             int newWidth = oldWidth - columnSizeDelta;
 
+            if (newWidth < 0)
+                newWidth = 0;
+
             if (dontShrinkHeaders && newWidth < hdrWidths.get(i) + CELLS_GAP)
                 newWidth = hdrWidths.get(i) + CELLS_GAP;
 
@@ -150,17 +154,22 @@ public class Table implements TerminalComponent {
         if (remainingDelta != 0) {
             int lastIdx = columnWidths.size() - 1;
 
-            columnWidths.set(lastIdx, columnWidths.get(lastIdx) - remainingDelta);
-        }
+            int newWidth = columnWidths.get(lastIdx) - remainingDelta;
 
-        List<String> formatList = columnWidths.stream()
-            .map(l -> format(l, CELLS_GAP))
-            .collect(Collectors.toList());
+            if (newWidth < 0)
+                newWidth = 0;
+
+            columnWidths.set(lastIdx, newWidth);
+        }
 
         printHeader(out);
 
+        String fmt = columnWidths.stream()
+            .map(l -> format(l, CELLS_GAP))
+            .collect(Collectors.joining());
+
         for (Object[] row : rows()) {
-            out.printf(String.join("", formatList), stringify(row));
+            out.printf(fmt, stringify(row));
             out.println();
         }
 
@@ -230,14 +239,26 @@ public class Table implements TerminalComponent {
             if (i == sortingColIdx) {
                 int width = colWidth - CELLS_GAP;
 
+                if (width < 0)
+                    width = 0;
+
                 hdrCell = hdrCell.length() > width ? hdrCell.substring(0, width) : hdrCell;
 
                 hdrCell += ascSorting ? ASC_CHAR : DESC_CHAR;
 
                 formattedHdr.add(String.format(format(colWidth, CELLS_GAP - 1), hdrCell));
             }
-            else
-                formattedHdr.add(String.format(format(colWidth, CELLS_GAP), hdrCell));
+            else {
+                String fmt = format(colWidth, CELLS_GAP);
+
+                try {
+                    formattedHdr.add(String.format(fmt, hdrCell));
+                }
+                catch (UnknownFormatConversionException e) {
+                    throw new RuntimeException("Incorrect format: [colWidth=" + colWidth + ", hdrCell="
+                        + hdrCell + ", fmt=" + fmt + ']', e);
+                }
+            }
         }
 
         String hdrBefore = coloredHeader(Ansi.Color.GREEN, formattedHdr.subList(0, sortingColIdx));
@@ -253,7 +274,15 @@ public class Table implements TerminalComponent {
      * @param colWidth Column width.
      */
     private String format(int colWidth, int cellsGap) {
-        return "%-" + colWidth + '.' + (colWidth - cellsGap) + 's';
+        int width = colWidth - cellsGap;
+
+        if (width < 0) {
+            width = 0;
+
+            colWidth = cellsGap;
+        }
+
+        return "%-" + colWidth + '.' + width + 's';
     }
 
     /**
