@@ -23,9 +23,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.fusesource.jansi.Ansi;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
+import static dev.ignitop.ui.component.impl.Table.ASC_CHAR;
+import static dev.ignitop.ui.component.impl.Table.CELLS_GAP;
 import static dev.ignitop.util.TestUtils.DEC_SEP;
 import static dev.ignitop.util.TestUtils.renderToString;
 import static java.lang.System.lineSeparator;
@@ -171,7 +174,19 @@ class TableTest {
             .findFirst()
             .orElseThrow();
 
-        assertTrue(renderedHdr.contains("Header  null  "));
+        String expHdr = ansi().fgBlack()
+            .bg(Ansi.Color.BLUE)
+            .a("Header")
+            .a(ASC_CHAR)
+            .a(" ")
+            .reset()
+            .toString() + ansi().fgBlack() // Looks like a bug in JANSI, reset does not work without #toString.
+            .bgGreen()
+            .a("null  ")
+            .reset()
+            .toString();
+
+        assertEquals(expHdr, renderedHdr, "Unexpected header");
     }
 
     /**
@@ -384,32 +399,42 @@ class TableTest {
     /**
      * Output table with specified widths.
      *
-     * @param rowsWithHdr Rows with a header.
+     * @param rowsWithHdr Rows with a header row.
      * @param colWidths Column widths.
      */
     private String tableWithWidths(List<List<String>> rowsWithHdr, List<Integer> colWidths) {
-        int colGap = 2;
-
-        String rowFormat = String.format(
-            "%%-%ds".repeat(colWidths.size()),
-            colWidths.stream()
-                .map(i -> i + colGap)
-                .toArray());
-
         StringBuilder sb = new StringBuilder();
 
         for (int i = 0; i < rowsWithHdr.size(); i++) {
-            String formattedStr = String.format(rowFormat, rowsWithHdr.get(i).toArray());
+            Object[] rowCells = rowsWithHdr.get(i).toArray();
 
-            if (i == 0) {
-                sb.append(ansi().fgBlack()
-                    .bgGreen()
-                    .a(formattedStr)
-                    .reset()
-                    .toString());
+            for (int j = 0; j < colWidths.size(); j++) {
+                String fmt = String.format("%%-%ds", colWidths.get(j) + CELLS_GAP);
+
+                String formattedCell = String.format(fmt, rowCells[j]);
+
+                // Coloring only for default sorting of table (by first column, ascending)
+                if (i == 0) {
+                    if (j == 0) {
+                        String srtFmt = String.format("%%-%ds%%-%ds", colWidths.get(0), CELLS_GAP);
+
+                        formattedCell = ansi().fgBlack()
+                            .bg(Ansi.Color.BLUE)
+                            .a(String.format(srtFmt, rowCells[0], ASC_CHAR))
+                            .reset()
+                            .toString();
+                    }
+                    else if (j == 1) {
+                        formattedCell = ansi().fgBlack()
+                            .bgGreen()
+                            .a(String.format(fmt, rowCells[1]))
+                            .reset() // Currently, it is a last column.
+                            .toString();
+                    }
+                }
+
+                sb.append(formattedCell);
             }
-            else
-                sb.append(formattedStr);
 
             sb.append(lineSeparator());
         }
