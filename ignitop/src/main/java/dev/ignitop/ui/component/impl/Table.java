@@ -53,10 +53,10 @@ public class Table implements TerminalComponent {
     /** Content width. */
     private int contentWidth;
 
-    /** Sorting col index. */
+    /** Sorting column index. */
     private int sortingColIdx;
 
-    /** Asc sorting. */
+    /** Ascending sorting flag. */
     private boolean ascSorting;
 
     /**
@@ -161,15 +161,6 @@ public class Table implements TerminalComponent {
         out.println("Total items: " + rawRows.size());
     }
 
-    /**
-     * @param colIdx Index of column which will be user to sort rows.
-     * @param ascending Ascending sorting. Set <code>false</code> for descending sorting.
-     */
-    public void setSorting(int colIdx, boolean ascending) {
-        sortingColIdx = colIdx;
-        ascSorting = ascending;
-    }
-
     /** {@inheritDoc} */
     @Override public int contentWidth() {
         return contentWidth;
@@ -191,6 +182,32 @@ public class Table implements TerminalComponent {
         return rawRows.stream()
             .sorted(this::compareRows)
             .collect(Collectors.toUnmodifiableList());
+    }
+
+    /**
+     * @param colIdx Index of column which will be user to sort rows.
+     * @param ascending Ascending sorting. Set <code>false</code> for descending sorting.
+     */
+    public void setSorting(int colIdx, boolean ascending) {
+        if (colIdx < 0 || colIdx > hdr.size())
+            return;
+
+        sortingColIdx = colIdx;
+        ascSorting = ascending;
+    }
+
+    /**
+     * @return Sorting column index.
+     */
+    public int sortingColumnIndex() {
+        return sortingColIdx;
+    }
+
+    /**
+     * @return Ascending sorting flag.
+     */
+    public boolean ascendingSorting() {
+        return ascSorting;
     }
 
     /**

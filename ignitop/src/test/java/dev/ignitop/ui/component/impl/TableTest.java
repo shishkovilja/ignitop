@@ -31,6 +31,7 @@ import static dev.ignitop.util.TestUtils.renderToString;
 import static java.lang.System.lineSeparator;
 import static org.fusesource.jansi.Ansi.ansi;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -291,6 +292,45 @@ class TableTest {
     @Test
     void setSorting_secondColumn_descending() {
         checkSetSorting(5, 1, false);
+    }
+
+    /**
+     *
+     */
+    @Test
+    void setSorting_sortColumnIndex_correct() {
+        Table table = new Table(List.of(WIDE_HEADER, WIDE_HEADER), rows(3));
+
+        table.setSorting(1, false);
+
+        assertEquals(1, table.sortingColumnIndex(), "Unxepected 'sortingColumnIndex'");
+        assertFalse(table.ascendingSorting(), "Unxepected 'ascendingSorting'");
+    }
+
+    /**
+     *
+     */
+    @Test
+    void setSorting_negative_sortColumnIndex() {
+        Table table = new Table(List.of(WIDE_HEADER, WIDE_HEADER), rows(3));
+
+        table.setSorting(-1, false);
+
+        assertEquals(0, table.sortingColumnIndex(), "Unxepected 'sortingColumnIndex'");
+        assertTrue(table.ascendingSorting(), "Unxepected 'ascendingSorting'");
+    }
+
+    /**
+     *
+     */
+    @Test
+    void setSorting_outOfBunds_sortColumnIndex() {
+        Table table = new Table(List.of(WIDE_HEADER, WIDE_HEADER), rows(3));
+
+        table.setSorting(5, false);
+
+        assertEquals(0, table.sortingColumnIndex(), "Unxepected 'sortingColumnIndex'");
+        assertTrue(table.ascendingSorting(), "Unxepected 'ascendingSorting'");
     }
 
     /**
