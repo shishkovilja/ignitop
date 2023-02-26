@@ -87,7 +87,7 @@ class SystemMetricsUpdaterTest {
 
         when(igniteHelper.systemMetrics()).thenReturn(infos);
 
-        Iterator<TerminalComponent> compIter = new SystemMetricsUpdater(igniteHelper).components()
+        Iterator<TerminalComponent> compIter = new SystemMetricsUpdater(igniteHelper).updatedComponents()
             .iterator();
 
         assertTrue(renderToString(compIter.next(), 400).contains("System metrics"), "Unexpected title");

@@ -112,13 +112,21 @@ public class IgniTop {
 
         terminalUi.updater(new TopologyInformationUpdater(igniteHelper));
 
-        screenUpdaterFut = screenUpdaterExec.scheduleAtFixedRate(terminalUi::refresh, 0, DEFAULT_UPDATE_INTERVAL,
+        screenUpdaterFut = screenUpdaterExec.scheduleAtFixedRate(terminalUi::updateContent, 0, DEFAULT_UPDATE_INTERVAL,
             TimeUnit.SECONDS);
 
         KeyPressHandler keyPressHnd = new KeyPressHandler();
 
         keyPressHnd.addKeyHandler('t', () -> terminalUi.updater(new TopologyInformationUpdater(igniteHelper)));
         keyPressHnd.addKeyHandler('s', () -> terminalUi.updater(new SystemMetricsUpdater(igniteHelper)));
+
+        for (int i = 1; i < 10; i++) {
+            int i0 = i;
+
+            char digitKey = (char)(i0 + '0');
+
+            keyPressHnd.addKeyHandler(digitKey, () -> terminalUi.setSortingColumn(i0 - 1));
+        }
 
         keyPressFut = keyPressExec.submit(() -> {
             try {

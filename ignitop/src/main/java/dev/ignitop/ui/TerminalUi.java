@@ -17,14 +17,17 @@
 package dev.ignitop.ui;
 
 import java.util.Collection;
-import java.util.concurrent.atomic.AtomicReference;
 import dev.ignitop.ui.component.TerminalComponent;
+import dev.ignitop.ui.component.impl.Table;
 import dev.ignitop.ui.updater.ScreenUpdater;
 
 /**
  *
  */
 public class TerminalUi {
+    /** Default sorting column index. */
+    public static final int DEFAULT_SORTING_COLUMN = 0;
+
     /** Size of a component, which take up whole line. */
     public static final int WHOLE_LINE = -1;
 
@@ -32,10 +35,20 @@ public class TerminalUi {
     private final TerminalProvider terminalProvider;
 
     /** Current screen updater. */
-    private final AtomicReference<ScreenUpdater> updaterRef = new AtomicReference<>();
+    private ScreenUpdater updater;
+
+    /** Components. */
+    private Collection<TerminalComponent> components;
 
     /** UI width. */
     private int width;
+
+    /** Sorting column index. */
+    private int sortColIdx = DEFAULT_SORTING_COLUMN;
+
+    /** Ascending sorting. */
+    private boolean ascending = true;
+
 
     /**
      * @param terminalProvider TerminalProvider.
@@ -47,11 +60,21 @@ public class TerminalUi {
     }
 
     /**
-     *
+     * Update content and refresh screen.
      */
-    public void refresh() {
-        Collection<TerminalComponent> components = updaterRef.get().components();
+    public synchronized void updateContent() {
+        if (updater == null)
+            return;
 
+        components = updater.updatedComponents();
+
+        refresh();
+    }
+
+    /**
+     * Refresh screen without content updating.
+     */
+    public synchronized void refresh() {
         width = terminalProvider.width();
 
         int maxComponentWidth = components.stream()
@@ -60,6 +83,11 @@ public class TerminalUi {
             .orElse(width);
 
         terminalProvider.eraseScreen();
+
+        for (TerminalComponent component : components) {
+            if (component instanceof Table)
+                ((Table)component).setSorting(sortColIdx, ascending);
+        }
 
         for (TerminalComponent component : components)
             component.render(Math.min(maxComponentWidth, width), terminalProvider.out());
@@ -75,8 +103,22 @@ public class TerminalUi {
     /**
      * @param updater New current screen updater.
      */
-    public void updater(ScreenUpdater updater) {
-        updaterRef.set(updater);
+    public synchronized void updater(ScreenUpdater updater) {
+        this.updater = updater;
+
+        updateContent();
+    }
+
+    /**
+     * Set sorting column for screen tables. Duplicated set of same column reverses sorting order.
+     *
+     * @param sortColIdx Sorting column index.
+     */
+    public synchronized void setSortingColumn(int sortColIdx) {
+        if (sortColIdx == this.sortColIdx)
+            ascending = !ascending;
+
+        this.sortColIdx = sortColIdx;
 
         refresh();
     }
