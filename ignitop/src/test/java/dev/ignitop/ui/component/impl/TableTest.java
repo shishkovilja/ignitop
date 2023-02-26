@@ -422,7 +422,7 @@ class TableTest {
 
                         int cellContentWidth = Math.min(expWidth, rowCell.length());
 
-                        // We are expanding and extra space needed.
+                        // We are expanding and extra space needed after content.
                         int extraWith = cellContentWidth < expWidth ? expWidth - cellContentWidth : 0;
 
                         String fmtForSorted = String.format("%%-%ds%%-%ds", cellContentWidth, CELLS_GAP + extraWith);
