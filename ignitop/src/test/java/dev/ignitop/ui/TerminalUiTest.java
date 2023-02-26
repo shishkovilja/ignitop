@@ -99,11 +99,11 @@ class TerminalUiTest {
 
         TerminalUi ui = new TerminalUi(mockTerminalProvider);
         ui.updater(mockSreenUpdater);
-        when(mockSreenUpdater.components()).thenReturn(List.of(wideTable, narrowTable, lbl));
+        when(mockSreenUpdater.updatedComponents()).thenReturn(List.of(wideTable, narrowTable, lbl));
 
         when(mockTerminalProvider.width()).thenReturn(terminalWidth);
 
-        ui.refresh();
+        ui.updateContent();
 
         InOrder inOrder = inOrder(wideTable, narrowTable, lbl);
 

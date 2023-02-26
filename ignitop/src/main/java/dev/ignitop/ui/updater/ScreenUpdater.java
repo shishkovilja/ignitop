@@ -28,5 +28,5 @@ public interface ScreenUpdater {
     /**
      *
      */
-    public Collection<TerminalComponent> components();
+    public Collection<TerminalComponent> updatedComponents();
 }

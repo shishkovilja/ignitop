@@ -43,7 +43,7 @@ public class SystemMetricsUpdater implements ScreenUpdater {
     }
 
     /** {@inheritDoc} */
-    @Override public Collection<TerminalComponent> components() {
+    @Override public Collection<TerminalComponent> updatedComponents() {
         List<TerminalComponent> components = new ArrayList<>();
 
         components.add(new Title("System metrics"));

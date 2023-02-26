@@ -124,7 +124,7 @@ class TopologyInformationUpdaterTest {
 
         TopologyInformationUpdater topInfoUpdater = new TopologyInformationUpdater(igniteHelper);
 
-        Iterator<TerminalComponent> iter = topInfoUpdater.components().iterator();
+        Iterator<TerminalComponent> iter = topInfoUpdater.updatedComponents().iterator();
 
         assertTrue(renderToString(iter.next(), 400).contains("Topology"));
 

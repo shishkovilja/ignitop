@@ -53,7 +53,7 @@ public class TopologyInformationUpdater implements ScreenUpdater {
     }
 
     /** {@inheritDoc} */
-    @Override public Collection<TerminalComponent> components() {
+    @Override public Collection<TerminalComponent> updatedComponents() {
         ArrayList<TerminalComponent> components = new ArrayList<>();
 
         TopologyInformation topInfo = igniteHelper.topologyInformation();

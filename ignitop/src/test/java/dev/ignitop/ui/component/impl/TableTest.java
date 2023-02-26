@@ -42,6 +42,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  */
 // TODO Refactor: method names, public modifiers, boiler plate in contentWidth_* (https://github.com/shishkovilja/ignitop/issues/55)
+// TODO Add checks of header to sorting tests (ascending descending, different columns)
+// TODO Add checks for continuous rendering
 class TableTest {
     /** Wide header. */
     public static final String WIDE_HEADER = "Very very very wide header";
@@ -361,10 +363,23 @@ class TableTest {
      *
      */
     @Test
-    void setSorting_outOfBunds_sortColumnIndex() {
+    void setSorting_sortColumnIndex_equalToLength() {
         Table table = new Table(List.of(WIDE_HEADER, WIDE_HEADER), rows(3));
 
-        table.setSorting(5, false);
+        table.setSorting(2, false);
+
+        assertEquals(0, table.sortingColumnIndex(), "Unxepected 'sortingColumnIndex'");
+        assertTrue(table.ascendingSorting(), "Unxepected 'ascendingSorting'");
+    }
+
+    /**
+     *
+     */
+    @Test
+    void setSorting_sortColumnIndex_biggerThanLength() {
+        Table table = new Table(List.of(WIDE_HEADER, WIDE_HEADER), rows(3));
+
+        table.setSorting(3, false);
 
         assertEquals(0, table.sortingColumnIndex(), "Unxepected 'sortingColumnIndex'");
         assertTrue(table.ascendingSorting(), "Unxepected 'ascendingSorting'");

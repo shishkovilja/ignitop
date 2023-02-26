@@ -60,6 +60,9 @@ public class Table implements TerminalComponent {
     /** Content width. */
     private int contentWidth;
 
+    /** Last rendered width. */
+    private int lastRenderedWidth;
+
     /** Sorting column index. */
     private int sortingColIdx;
 
@@ -119,11 +122,14 @@ public class Table implements TerminalComponent {
         contentWidth = columnWidths.stream()
             .mapToInt(Integer::intValue)
             .sum();
+
+        // Necessary to initial rendering
+        lastRenderedWidth = contentWidth;
     }
 
     /** {@inheritDoc} */
     @Override public void render(int width, PrintStream out) {
-        int contentWidthDelta = contentWidth - width;
+        int contentWidthDelta = lastRenderedWidth - width;
 
         boolean dontShrinkHeaders = hdrWidthSum <= width;
 
@@ -174,6 +180,8 @@ public class Table implements TerminalComponent {
         }
 
         out.println("Total items: " + rawRows.size());
+
+        lastRenderedWidth = width;
     }
 
     /** {@inheritDoc} */
@@ -204,7 +212,7 @@ public class Table implements TerminalComponent {
      * @param ascending Ascending sorting. Set <code>false</code> for descending sorting.
      */
     public void setSorting(int colIdx, boolean ascending) {
-        if (colIdx < 0 || colIdx > hdr.size())
+        if (colIdx < 0 || colIdx >= hdr.size())
             return;
 
         sortingColIdx = colIdx;
