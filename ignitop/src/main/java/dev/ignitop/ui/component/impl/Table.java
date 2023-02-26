@@ -154,7 +154,7 @@ public class Table implements TerminalComponent {
         }
 
         List<String> formatList = columnWidths.stream()
-            .map(this::format)
+            .map(l -> format(l, CELLS_GAP))
             .collect(Collectors.toList());
 
         printHeader(out);
@@ -226,15 +226,23 @@ public class Table implements TerminalComponent {
             int colWidth = columnWidths.get(i);
             String hdrCell = hdr.get(i);
 
-            formattedHdr.add(String.format(format(colWidth), hdrCell));
-        }
+            // Manually shrink of header cell of sorted column, because we need to append sorting character.
+            if (i == sortingColIdx) {
+                int width = colWidth - CELLS_GAP;
 
-        char[] sortedColArr = formattedHdr.get(sortingColIdx).toCharArray();
-        sortedColArr[sortedColArr.length - 2] = ascSorting ? ASC_CHAR : DESC_CHAR;
+                hdrCell = hdrCell.length() > width ? hdrCell.substring(0, width) : hdrCell;
+
+                hdrCell += ascSorting ? ASC_CHAR : DESC_CHAR;
+
+                formattedHdr.add(String.format(format(colWidth, CELLS_GAP - 1), hdrCell));
+            }
+            else
+                formattedHdr.add(String.format(format(colWidth, CELLS_GAP), hdrCell));
+        }
 
         String hdrBefore = coloredHeader(Ansi.Color.GREEN, formattedHdr.subList(0, sortingColIdx));
 
-        String sortingCol = coloredHeader(Ansi.Color.BLUE, List.of(String.valueOf(sortedColArr)));
+        String sortingCol = coloredHeader(Ansi.Color.BLUE, List.of(formattedHdr.get(sortingColIdx)));
 
         String hdrAfter = coloredHeader(Ansi.Color.GREEN, formattedHdr.subList(sortingColIdx + 1, hdr.size()));
 
@@ -244,8 +252,8 @@ public class Table implements TerminalComponent {
     /**
      * @param colWidth Column width.
      */
-    private String format(int colWidth) {
-        return "%-" + colWidth + '.' + (colWidth - CELLS_GAP) + 's';
+    private String format(int colWidth, int cellsGap) {
+        return "%-" + colWidth + '.' + (colWidth - cellsGap) + 's';
     }
 
     /**
