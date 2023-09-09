@@ -37,12 +37,12 @@ import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.cluster.ClusterState;
 import org.apache.ignite.configuration.ClientConfiguration;
+import org.apache.ignite.internal.management.metric.MetricTask;
+import org.apache.ignite.internal.management.metric.MetricCommandArg;
+import org.apache.ignite.internal.management.SystemViewTask;
+import org.apache.ignite.internal.management.SystemViewCommandArg;
+import org.apache.ignite.internal.management.SystemViewTaskResult;
 import org.apache.ignite.internal.visor.VisorTaskArgument;
-import org.apache.ignite.internal.visor.metric.VisorMetricTask;
-import org.apache.ignite.internal.visor.metric.VisorMetricTaskArg;
-import org.apache.ignite.internal.visor.systemview.VisorSystemViewTask;
-import org.apache.ignite.internal.visor.systemview.VisorSystemViewTaskArg;
-import org.apache.ignite.internal.visor.systemview.VisorSystemViewTaskResult;
 
 import static dev.ignitop.util.IgniTopUtils.append;
 import static org.apache.ignite.internal.IgniteKernal.CFG_VIEW;
@@ -180,7 +180,7 @@ public class IgniteHelper implements AutoCloseable {
     }
 
     /**
-     * Return result of {@link VisorSystemViewTask} execution for a node with a specified id.
+     * Return result of {@link SystemViewTask} execution for a node with a specified id.
      * Expected, that ID is a value, which corresponds to a value returned by a {@link ClusterNode#id()}.
      *
      * @param sysViewName System view name.
@@ -192,7 +192,7 @@ public class IgniteHelper implements AutoCloseable {
     }
 
     /**
-     * Get full result of multi-node {@link VisorSystemViewTask} execution groupped by node identifiers.
+     * Get full result of multi-node {@link SystemViewTask} execution groupped by node identifiers.
      *
      * @param sysViewName System view name.
      * @param nodeIds     Node ids.
@@ -203,9 +203,12 @@ public class IgniteHelper implements AutoCloseable {
         if (randomNodeOpt.isEmpty())
             return Map.of();
 
-        VisorSystemViewTaskResult res = (VisorSystemViewTaskResult)executeTask(
-            VisorSystemViewTask.class.getName(),
-            new VisorSystemViewTaskArg(sysViewName),
+        SystemViewCommandArg sysViewCmdArg = new SystemViewCommandArg();
+        sysViewCmdArg.systemViewName(sysViewName);
+
+        SystemViewTaskResult res = (SystemViewTaskResult)executeTask(
+            SystemViewTask.class.getName(),
+            sysViewCmdArg,
             randomNodeOpt.get());
 
         HashMap<UUID, List<List<?>>> map = new HashMap<>(res.rows());
@@ -215,23 +218,27 @@ public class IgniteHelper implements AutoCloseable {
     }
 
     /**
-     * Return result of single-node {@link VisorMetricTaskArg} execution for a node with a specified id.
+     * Return result of single-node {@link MetricCommandArg} execution for a node with a specified id.
      * Expected, that ID is a value, which corresponds to a value returned by a {@link ClusterNode#id()}.
      *
      * @param metricName Metric name.
      * @param nodeId Node id.
      */
     private Map<String, ?> metric(String metricName, UUID nodeId) {
+        MetricCommandArg metricCmdArg = new MetricCommandArg();
+
+        metricCmdArg.name(metricName);
+
         Map<String, ?> res = (Map<String, ?>)executeTask(
-            VisorMetricTask.class.getName(),
-            new VisorMetricTaskArg(metricName, null, -1),
+            MetricTask.class.getName(),
+            metricCmdArg,
             nodeId);
 
         return res != null ? res : Map.of();
     }
 
     /**
-     * Return first found entry for a specified metric name. Because {@link VisorMetricTaskArg} can return multiple
+     * Return first found entry for a specified metric name. Because {@link MetricCommandArg} can return multiple
      * values, it is expected, that this method is called for a single-value metric (not whole metric registry).
      *
      * @param metricName Metric name.
